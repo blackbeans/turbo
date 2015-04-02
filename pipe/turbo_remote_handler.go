@@ -2,8 +2,8 @@ package pipe
 
 import (
 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo/client"
 	"math/rand"
-	"turbo/client"
 )
 
 //没有链接的分组直接失败

@@ -1,8 +1,8 @@
 package pipe
 
 import (
-	"turbo/client"
-	"turbo/packet"
+	"github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/packet"
 )
 
 type IEvent interface {
