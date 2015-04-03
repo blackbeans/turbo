@@ -38,7 +38,7 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 func init() {
 
 	rc := turbo.NewRemotingConfig(
-		flow,
+		"turbo-server:localhost:28888",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
@@ -54,7 +54,7 @@ func init() {
 	clientManager = client.NewClientManager(reconnManager)
 
 	rcc := turbo.NewRemotingConfig(
-		clientf,
+		"turbo-client:localhost:28888",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)

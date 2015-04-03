@@ -23,8 +23,7 @@ type RemotingConfig struct {
 	RequestHolder    *ReqHolder
 }
 
-func NewRemotingConfig(
-	rflow *RemotingFlow,
+func NewRemotingConfig(name string,
 	maxdispatcherNum,
 	readbuffersize, writebuffersize, writechannlesize, readchannelsize int,
 	idletime time.Duration, maxOpaque int) *RemotingConfig {
@@ -45,7 +44,7 @@ func NewRemotingConfig(
 
 	//初始化
 	rc := &RemotingConfig{
-		FlowStat:         rflow,
+		FlowStat:         NewRemotingFlow(name),
 		MaxDispatcherNum: make(chan int, maxdispatcherNum),
 		ReadBufferSize:   readbuffersize,
 		WriteBufferSize:  writebuffersize,
