@@ -26,10 +26,10 @@ func NewRemotingFlow(name string) *RemotingFlow {
 
 func (self *RemotingFlow) Monitor() string {
 
-	line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d\t", self.Name, self.ReadFlow.Changes(),
+	line := fmt.Sprintf("%s:\t\tread:%d\t\tdispatcher:%d\t\twrite:%d\t\t", self.Name, self.ReadFlow.Changes(),
 		self.DispatcherFlow.Changes(), self.WriteFlow.Changes())
 	if nil != self.DispatcherWorkPool {
-		line = fmt.Sprintf("%sdispatcher-pool:%d\t", line, self.DispatcherWorkPool.count)
+		line = fmt.Sprintf("%sdispatcher-pool:%d\t\t", line, self.DispatcherWorkPool.count)
 	}
 	return line
 }
