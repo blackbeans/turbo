@@ -205,5 +205,5 @@ func (self *RemotingClient) IsClosed() bool {
 
 func (self *RemotingClient) Shutdown() {
 	self.remoteSession.Close()
-	log.Info("RemotingClient|Shutdown|%s...", self.LocalAddr())
+	log.Info("RemotingClient|Shutdown|%s...", self.RemoteAddr())
 }
