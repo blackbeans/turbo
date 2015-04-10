@@ -2,7 +2,6 @@ package session
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	log "github.com/blackbeans/log4go"
@@ -74,13 +73,13 @@ func (self *Session) ReadPacket() {
 
 	//缓存本次包的数据
 	packetBuff := make([]byte, 0, self.rc.ReadBufferSize)
-	buff := bytes.NewBuffer(packetBuff)
 
 	for !self.isClose {
 		slice, err := self.br.ReadSlice(packet.CMD_CRLF[0])
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err {
-			buff.Reset()
+			packetBuff = packetBuff[:0]
+			// buff.Reset()
 			//链接是关闭的
 			if err == io.EOF ||
 				err == syscall.EPIPE ||
@@ -94,7 +93,7 @@ func (self *Session) ReadPacket() {
 		//读取下一个字节
 		delim, err := self.br.ReadByte()
 		if nil != err {
-			buff.Reset()
+			packetBuff = packetBuff[:0]
 			//链接是关闭的
 			if err == io.EOF ||
 				err == syscall.EPIPE ||
@@ -105,7 +104,8 @@ func (self *Session) ReadPacket() {
 			continue
 		}
 
-		l := buff.Len() + len(slice) + 1
+		// l := buff.Len() + len(slice) + 1
+		l := len(packetBuff) + len(slice) + 1
 		//如果是\n那么就是一个完整的包
 		if l >= packet.MAX_PACKET_BYTES {
 			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
@@ -113,32 +113,25 @@ func (self *Session) ReadPacket() {
 			return
 		} else if l > packet.PACKET_HEAD_LEN && delim == packet.CMD_CRLF[1] {
 
-			b := append(buff.Bytes(), append(slice, delim)...)
-			packet, err := packet.UnmarshalTLV(b)
+			packetBuff = append(packetBuff, append(slice, delim)...)
+			packet, err := packet.UnmarshalTLV(packetBuff)
 			if nil != err || nil == packet {
-				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, buff.Len(), buff.Bytes())
-				buff.Reset()
+				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(packetBuff), packetBuff)
+				packetBuff = packetBuff[:0]
 				continue
 			}
 
 			//写入缓冲
 			self.ReadChannel <- *packet
 			//重置buffer
-			buff.Reset()
+			packetBuff = packetBuff[:0]
 			self.idleTimer.Reset(self.rc.IdleTime)
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
 
 		} else {
-			ap := append(slice, delim)
-			_, err := buff.Write(ap)
-			//写入，如果数据太大直接有ErrTooLarge则关闭session退出
-			if nil != err {
-				self.Close()
-				log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
-				return
-			}
+			packetBuff = append(packetBuff, append(slice, delim)...)
 		}
 	}
 }
