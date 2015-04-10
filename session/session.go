@@ -91,18 +91,6 @@ func (self *Session) ReadPacket() {
 			continue
 		}
 
-		if buff.Len()+len(slice) >= packet.MAX_PACKET_BYTES {
-			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			self.Close()
-			return
-		}
-
-		lflen, err := buff.Write(slice)
-		//如果写满了则需要增长
-		if lflen != len(slice) {
-			buff.Write(slice[lflen:])
-		}
-
 		//读取下一个字节
 		delim, err := self.br.ReadByte()
 		if nil != err {
@@ -117,19 +105,16 @@ func (self *Session) ReadPacket() {
 			continue
 		}
 
-		//写入，如果数据太大直接有ErrTooLarge则关闭session退出
-		err = buff.WriteByte(delim)
-		if nil != err {
-			self.Close()
-			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			return
-		}
-
+		l := buff.Len() + len(slice) + 1
 		//如果是\n那么就是一个完整的包
-		if buff.Len() > packet.PACKET_HEAD_LEN && delim == packet.CMD_CRLF[1] {
+		if l >= packet.MAX_PACKET_BYTES {
+			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
+			self.Close()
+			return
+		} else if l > packet.PACKET_HEAD_LEN && delim == packet.CMD_CRLF[1] {
 
-			packet, err := packet.UnmarshalTLV(buff.Bytes())
-
+			b := append(buff.Bytes(), append(slice, delim)...)
+			packet, err := packet.UnmarshalTLV(b)
 			if nil != err || nil == packet {
 				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, buff.Len(), buff.Bytes())
 				buff.Reset()
@@ -145,6 +130,15 @@ func (self *Session) ReadPacket() {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
 
+		} else {
+			ap := append(slice, delim)
+			_, err := buff.Write(ap)
+			//写入，如果数据太大直接有ErrTooLarge则关闭session退出
+			if nil != err {
+				self.Close()
+				log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
+				return
+			}
 		}
 	}
 }
