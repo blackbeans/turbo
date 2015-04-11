@@ -23,7 +23,7 @@ type TimeWheel struct {
 	tickPeriod     time.Duration
 	currentTick    int
 	slotJobWorkers chan bool
-	sync.RWMutex
+	lock           sync.RWMutex
 }
 
 //超时时间及每个个timewheel所需要的tick数
@@ -51,9 +51,9 @@ func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers in
 		for i := 0; ; i++ {
 			i = i % tw.ticksPerwheel
 			<-tw.tick.C
-			tw.Lock()
+			tw.lock.Lock()
 			tw.currentTick = i
-			tw.Unlock()
+			tw.lock.Unlock()
 
 			//notify expired
 			tw.notifyExpired(i)
@@ -66,7 +66,7 @@ func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers in
 //notifyExpired func
 func (self *TimeWheel) notifyExpired(idx int) {
 	var remove *list.List
-	self.RLock()
+	self.lock.RLock()
 	slots := self.wheel[idx]
 	for e := slots.hooks.Back(); nil != e; e = e.Prev() {
 		sj := e.Value.(*slotJob)
@@ -87,14 +87,14 @@ func (self *TimeWheel) notifyExpired(idx int) {
 			}()
 		}
 	}
-	self.RUnlock()
+	self.lock.RUnlock()
 
 	if nil != remove {
 		//remove
 		for e := remove.Back(); nil != e; e = e.Prev() {
-			self.Lock()
+			self.lock.Lock()
 			slots.hooks.Remove(e)
-			self.Unlock()
+			self.lock.Unlock()
 		}
 	}
 
@@ -102,21 +102,24 @@ func (self *TimeWheel) notifyExpired(idx int) {
 
 //add timeout func
 func (self *TimeWheel) After(timeout time.Duration, do func()) {
-	self.Lock()
+
 	idx := self.preTickIndex()
+	self.lock.Lock()
 	slots := self.wheel[idx]
 	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel)))
 	job := &slotJob{do, ttl}
 	slots.hooks.PushFront(job)
-	self.Unlock()
+	self.lock.Unlock()
 }
 
 func (self *TimeWheel) preTickIndex() int {
+	self.lock.RLock()
 	idx := self.currentTick
 	if idx > 0 {
 		idx -= 1
 	} else {
 		idx = self.ticksPerwheel - 1
 	}
+	self.lock.RUnlock()
 	return idx
 }
