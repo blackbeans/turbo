@@ -1,11 +1,13 @@
-package example
+package main
 
 import (
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/server"
-	"log"
+	// "log"
+	"net/http"
+	_ "net/http/pprof"
 	"time"
 )
 
@@ -14,10 +16,16 @@ func packetDispatcher(rclient *client.RemotingClient, p *packet.Packet) {
 	resp := packet.NewRespPacket(p.Opaque, p.CmdType, p.Data)
 	//直接回写回去
 	rclient.Write(*resp)
-	log.Printf("packetDispatcher|WriteResponse|%s\n", string(resp.Data))
+	// log.Printf("packetDispatcher|WriteResponse|%s\n", string(resp.Data))
 }
 
 func main() {
+
+	go func() {
+		http.ListenAndServe(":13800", nil)
+
+	}()
+
 	rc := turbo.NewRemotingConfig(
 		"turbo-server:localhost:28888",
 		1000, 16*1024,
@@ -26,4 +34,5 @@ func main() {
 
 	remoteServer := server.NewRemotionServer("localhost:28888", rc, packetDispatcher)
 	remoteServer.ListenAndServer()
+	select {}
 }

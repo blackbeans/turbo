@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	CONCURRENT_LEVEL = 16
+	CONCURRENT_LEVEL = 8
 )
 
 //网络层参数

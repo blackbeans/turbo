@@ -20,6 +20,7 @@ type RemotingClient struct {
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, p *packet.Packet) //包处理函数
 	rc               *turbo.RemotingConfig
+	tw               *turbo.TimeWheel
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -34,7 +35,8 @@ func NewRemotingClient(conn *net.TCPConn,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
-		rc:               rc}
+		rc:               rc,
+		tw:               turbo.NewTimeWheel(500*time.Second, 6, 100)}
 
 	return remotingClient
 }
@@ -184,19 +186,26 @@ var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	timeout time.Duration) (interface{}, error) {
 
-	//同步写出
+	// //同步写出
 	future, err := self.Write(p)
 	if nil != err {
 		return nil, err
 	}
+
+	ch := make(chan bool)
+	self.tw.After(timeout, func() {
+		ch <- true
+	})
+
 	var resp interface{}
 	select {
-	case <-time.After(timeout):
+	case <-ch:
 		//删除掉当前holder
 		return nil, TIMEOUT_ERROR
 	case resp = <-future:
 		return resp, nil
 	}
+
 }
 
 func (self *RemotingClient) IsClosed() bool {
