@@ -7,17 +7,17 @@ import (
 
 func TestTimeWheel(t *testing.T) {
 	tw := NewTimeWheel(100*time.Millisecond, 10, 100)
-	ch := make(chan bool, 1)
 
 	for i := 0; i < 10; i++ {
 		to := false
-		tw.After(1*time.Second, func() {
+		ch := make(chan bool, 1)
+		tw.After(3*time.Second, func() {
 			ch <- true
 		})
 		select {
 		case to = <-ch:
 			to = true
-		case <-time.After(2 * time.Second):
+		case <-time.After(5 * time.Second):
 			to = false
 
 		}

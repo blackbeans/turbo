@@ -2,6 +2,8 @@ package turbo
 
 import (
 	"container/list"
+	"fmt"
+	log "github.com/blackbeans/log4go"
 	"sync"
 	"time"
 )
@@ -23,12 +25,13 @@ type TimeWheel struct {
 	tickPeriod     time.Duration
 	currentTick    int
 	slotJobWorkers chan bool
-	lock           sync.RWMutex
+	lock           *sync.RWMutex
 }
 
 //超时时间及每个个timewheel所需要的tick数
 func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers int) *TimeWheel {
 	tw := &TimeWheel{
+		lock:           &sync.RWMutex{},
 		tickPeriod:     tickPeriod,
 		tick:           time.NewTicker(tickPeriod),
 		slotJobWorkers: make(chan bool, slotJobWorkers),
@@ -54,13 +57,21 @@ func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers in
 			tw.lock.Lock()
 			tw.currentTick = i
 			tw.lock.Unlock()
-
 			//notify expired
 			tw.notifyExpired(i)
 		}
 	}()
 
 	return tw
+}
+
+func (self *TimeWheel) Monitor() string {
+	ticks := 0
+	for _, v := range self.wheel {
+		ticks += v.hooks.Len()
+	}
+	return fmt.Sprintf("TimeWheel|[total-tick:%d\tworkers:%d/%d]",
+		ticks, len(self.slotJobWorkers), cap(self.slotJobWorkers))
 }
 
 //notifyExpired func
@@ -81,7 +92,12 @@ func (self *TimeWheel) notifyExpired(idx int) {
 			//async
 			go func() {
 				defer func() {
+					if err := recover(); nil != err {
+						//ignored
+						log.Error("TimeWheel|notifyExpired|Do|ERROR|%s\n", err)
+					}
 					<-self.slotJobWorkers
+
 				}()
 				sj.do()
 			}()
@@ -93,7 +109,7 @@ func (self *TimeWheel) notifyExpired(idx int) {
 		//remove
 		for e := remove.Back(); nil != e; e = e.Prev() {
 			self.lock.Lock()
-			slots.hooks.Remove(e)
+			slots.hooks.Remove(e.Value.(*list.Element))
 			self.lock.Unlock()
 		}
 	}
@@ -103,26 +119,25 @@ func (self *TimeWheel) notifyExpired(idx int) {
 //add timeout func
 func (self *TimeWheel) After(timeout time.Duration, do func()) {
 
-	self.lock.RLock()
 	idx := self.preTickIndex()
-	self.lock.RUnlock()
 
 	self.lock.Lock()
 	slots := self.wheel[idx]
 	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel)))
+	// log.Printf("After|TTL:%d|%d\n", ttl, timeout)
 	job := &slotJob{do, ttl}
 	slots.hooks.PushFront(job)
 	self.lock.Unlock()
 }
 
 func (self *TimeWheel) preTickIndex() int {
-
+	self.lock.RLock()
 	idx := self.currentTick
 	if idx > 0 {
 		idx -= 1
 	} else {
 		idx = self.ticksPerwheel - 1
 	}
-
+	self.lock.RUnlock()
 	return idx
 }
