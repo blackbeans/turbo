@@ -103,7 +103,10 @@ func (self *TimeWheel) notifyExpired(idx int) {
 //add timeout func
 func (self *TimeWheel) After(timeout time.Duration, do func()) {
 
+	self.lock.RLock()
 	idx := self.preTickIndex()
+	self.lock.RUnlock()
+
 	self.lock.Lock()
 	slots := self.wheel[idx]
 	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel)))
@@ -113,13 +116,13 @@ func (self *TimeWheel) After(timeout time.Duration, do func()) {
 }
 
 func (self *TimeWheel) preTickIndex() int {
-	self.lock.RLock()
+
 	idx := self.currentTick
 	if idx > 0 {
 		idx -= 1
 	} else {
 		idx = self.ticksPerwheel - 1
 	}
-	self.lock.RUnlock()
+
 	return idx
 }
