@@ -11,6 +11,7 @@ import (
 type slotJob struct {
 	do  func()
 	ttl int
+	ch  chan bool
 }
 
 type Slot struct {
@@ -100,6 +101,7 @@ func (self *TimeWheel) notifyExpired(idx int) {
 
 				}()
 				sj.do()
+				sj.ch <- true
 			}()
 		}
 	}
@@ -117,7 +119,7 @@ func (self *TimeWheel) notifyExpired(idx int) {
 }
 
 //add timeout func
-func (self *TimeWheel) After(timeout time.Duration, do func()) {
+func (self *TimeWheel) After(timeout time.Duration, do func()) <-chan bool {
 
 	idx := self.preTickIndex()
 
@@ -125,9 +127,10 @@ func (self *TimeWheel) After(timeout time.Duration, do func()) {
 	slots := self.wheel[idx]
 	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel)))
 	// log.Printf("After|TTL:%d|%d\n", ttl, timeout)
-	job := &slotJob{do, ttl}
+	job := &slotJob{do, ttl, make(chan bool, 1)}
 	slots.hooks.PushFront(job)
 	self.lock.Unlock()
+	return job.ch
 }
 
 func (self *TimeWheel) preTickIndex() int {
