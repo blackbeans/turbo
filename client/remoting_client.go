@@ -192,17 +192,14 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 		return nil, err
 	}
 
-	// ch := make(chan bool)
-	self.tw.After(timeout, func() {
-		// ch <- true
-		future <- nil
+	ch := self.tw.After(timeout, func() {
 	})
 
 	var resp interface{}
 	select {
-	// case <-ch:
-	// 	//删除掉当前holder
-	// 	return nil, TIMEOUT_ERROR
+	case <-ch:
+		// 	//删除掉当前holder
+		return nil, TIMEOUT_ERROR
 	case resp = <-future:
 		return resp, nil
 	}
