@@ -32,55 +32,42 @@ func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 }
 
 func (self *Packet) marshal() []byte {
-	//总长度	 1+ 4 字节+ 1字节 + 4字节 + var + \r + \n
+	//总长度	4 字节+ 1字节 + 4字节 + var + \r + \n
 	dl := 0
 	if nil != self.Data {
 		dl = len(self.Data)
 	}
 	length := PACKET_HEAD_LEN + dl + 2
-	buffer := make([]byte, 0, length)
-	buff := bytes.NewBuffer(buffer)
+	buffer := make([]byte, length)
 
-	// binary.BigEndian.PutUint32(buff, uint32(self.Opaque))
-	// buff.WriteByte(self.CmdType)
-	// binary.BigEndian.PutUint32(buff, uint32(len(self.Data)))
-	// Write(buff, binary.BigEndian, self.Data)
-	// buff.Write(CMD_CRLF)
+	binary.BigEndian.PutUint32(buffer[0:4], uint32(self.Opaque))    // 请求id
+	binary.BigEndian.PutUint16(buffer[4:6], uint16(self.CmdType))   //数据类型
+	binary.BigEndian.PutUint32(buffer[5:9], uint32(len(self.Data))) //总数据包长度
+	copy(buffer[9:9+dl], self.Data)
+	copy(buffer[9+dl:], CMD_CRLF)
 
-	Write(buff, binary.BigEndian, self.Opaque) // 请求id
-	//彻底包装request为TLV
-	Write(buff, binary.BigEndian, self.CmdType)           //数据类型
-	Write(buff, binary.BigEndian, uint32(len(self.Data))) //总数据包长度
-	Write(buff, binary.BigEndian, self.Data)              // 数据包
-	Write(buff, binary.BigEndian, CMD_CRLF)
-	return buff.Bytes()
+	return buffer
 }
 
 var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
 
-func (self *Packet) unmarshal(r *bytes.Reader) error {
+func (self *Packet) unmarshal(b []byte) error {
 
-	err := Read(r, binary.BigEndian, &self.Opaque)
-	if nil != err {
-		return err
+	if len(b) < PACKET_HEAD_LEN {
+		return errors.New(fmt.Sprintf("Corrupt PacketData|Less Than MIN LENGTH:%d/%d", len(b), PACKET_HEAD_LEN))
 	}
 
-	err = Read(r, binary.BigEndian, &self.CmdType)
-	if nil != err {
-		return err
-	}
+	self.Opaque = int32(binary.BigEndian.Uint32(b[:4]))
 
-	var dataLength uint32 //数据长度
-	err = Read(r, binary.BigEndian, &dataLength)
-	if nil != err {
-		return err
-	}
+	self.CmdType = uint8(binary.BigEndian.Uint16(b[4:6]))
+
+	dataLength := binary.BigEndian.Uint32(b[5:9])
 
 	if dataLength > 0 {
-		if int(dataLength) == r.Len() && dataLength <= MAX_PACKET_BYTES {
+		if int(dataLength) == len(b[9:]) && dataLength <= MAX_PACKET_BYTES {
 			//读取数据包
-			self.Data = make([]byte, dataLength, dataLength)
-			return Read(r, binary.BigEndian, self.Data)
+			self.Data = make([]byte, dataLength)
+			copy(self.Data, b[9:])
 		} else {
 			if dataLength > MAX_PACKET_BYTES {
 				return errors.New(fmt.Sprintf("Too Large Packet %d|%d", dataLength, MAX_PACKET_BYTES))
@@ -101,10 +88,9 @@ func MarshalPacket(packet *Packet) []byte {
 //解码packet
 func UnmarshalTLV(packet []byte) (*Packet, error) {
 	packet = bytes.TrimSuffix(packet, CMD_CRLF)
-	r := bytes.NewReader(packet)
 
 	tlv := &Packet{}
-	err := tlv.unmarshal(r)
+	err := tlv.unmarshal(packet)
 	if nil != err {
 		return tlv, err
 	} else {
