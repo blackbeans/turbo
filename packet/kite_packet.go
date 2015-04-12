@@ -41,7 +41,7 @@ func (self *Packet) marshal() []byte {
 	buffer := make([]byte, length)
 
 	binary.BigEndian.PutUint32(buffer[0:4], uint32(self.Opaque))    // 请求id
-	binary.BigEndian.PutUint16(buffer[4:6], uint16(self.CmdType))   //数据类型
+	buffer[4] = self.CmdType                                        //数据类型
 	binary.BigEndian.PutUint32(buffer[5:9], uint32(len(self.Data))) //总数据包长度
 	copy(buffer[9:9+dl], self.Data)
 	copy(buffer[9+dl:], CMD_CRLF)
@@ -59,7 +59,7 @@ func (self *Packet) unmarshal(b []byte) error {
 
 	self.Opaque = int32(binary.BigEndian.Uint32(b[:4]))
 
-	self.CmdType = uint8(binary.BigEndian.Uint16(b[4:6]))
+	self.CmdType = b[4]
 
 	dataLength := binary.BigEndian.Uint32(b[5:9])
 
