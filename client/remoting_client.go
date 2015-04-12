@@ -36,7 +36,7 @@ func NewRemotingClient(conn *net.TCPConn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
 		rc:               rc,
-		tw:               turbo.NewTimeWheel(500*time.Second, 6, 100)}
+		tw:               turbo.NewTimeWheel(500*time.Millisecond, 6, 10)}
 
 	return remotingClient
 }

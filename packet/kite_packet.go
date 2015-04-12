@@ -41,12 +41,18 @@ func (self *Packet) marshal() []byte {
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 
-	Write(buff, binary.BigEndian, self.Opaque) // 请求id
+	binary.BigEndian.PutUint32(buff, uint32(self.Opaque))
+	buff.WriteByte(self.CmdType)
+	binary.BigEndian.PutUint32(buff, uint32(len(self.Data)))
+	Write(buff, binary.BigEndian, self.Data)
+	buff.Write(CMD_CRLF)
+
+	// Write(buff, binary.BigEndian, self.Opaque) // 请求id
 	// //彻底包装request为TLV
-	Write(buff, binary.BigEndian, self.CmdType)           //数据类型
-	Write(buff, binary.BigEndian, uint32(len(self.Data))) //总数据包长度
-	Write(buff, binary.BigEndian, self.Data)              // 数据包
-	Write(buff, binary.BigEndian, CMD_CRLF)
+	// Write(buff, binary.BigEndian, self.CmdType)           //数据类型
+	// Write(buff, binary.BigEndian, uint32(len(self.Data))) //总数据包长度
+	// Write(buff, binary.BigEndian, self.Data) // 数据包
+	// Write(buff, binary.BigEndian, CMD_CRLF)
 	return buff.Bytes()
 }
 
