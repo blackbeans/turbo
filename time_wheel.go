@@ -100,11 +100,17 @@ func (self *TimeWheel) notifyExpired(idx int) {
 					<-self.slotJobWorkers
 
 				}()
+
 				sj.do()
+
 				sj.ch <- true
+				close(sj.ch)
+				// log.Debug("TimeWheel|notifyExpired|%d\n", sj.ttl)
+
 			}()
 		}
 	}
+
 	self.lock.RUnlock()
 
 	if nil != remove {
@@ -119,14 +125,14 @@ func (self *TimeWheel) notifyExpired(idx int) {
 }
 
 //add timeout func
-func (self *TimeWheel) After(timeout time.Duration, do func()) <-chan bool {
+func (self *TimeWheel) After(timeout time.Duration, do func()) chan bool {
 
 	idx := self.preTickIndex()
 
 	self.lock.Lock()
 	slots := self.wheel[idx]
 	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel)))
-	// log.Printf("After|TTL:%d|%d\n", ttl, timeout)
+	// log.Debug("After|TTL:%d|%d\n", ttl, timeout)
 	job := &slotJob{do, ttl, make(chan bool, 1)}
 	slots.hooks.PushFront(job)
 	self.lock.Unlock()
