@@ -88,9 +88,12 @@ func (self *Session) ReadPacket() {
 			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
 			return
-		} else if l > packet.PACKET_HEAD_LEN && line[len(line)-2] == packet.CMD_CRLF[0] {
-
+		} else {
 			buff = append(buff, line...)
+		}
+
+		//complete packet
+		if l > packet.PACKET_HEAD_LEN && buff[len(buff)-2] == packet.CMD_CRLF[0] {
 			packet, err := packet.UnmarshalTLV(buff)
 			if nil != err || nil == packet {
 				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(buff), buff)
@@ -105,9 +108,6 @@ func (self *Session) ReadPacket() {
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
-
-		} else {
-			buff = append(buff, line...)
 		}
 	}
 }
