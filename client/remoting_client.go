@@ -20,7 +20,6 @@ type RemotingClient struct {
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, p *packet.Packet) //包处理函数
 	rc               *turbo.RemotingConfig
-	tw               *turbo.TimeWheel
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -35,8 +34,7 @@ func NewRemotingClient(conn *net.TCPConn,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
-		rc:               rc,
-		tw:               turbo.NewTimeWheel(500*time.Millisecond, 6, 10)}
+		rc:               rc}
 
 	return remotingClient
 }
@@ -192,7 +190,7 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 		return nil, err
 	}
 
-	ch := self.tw.After(timeout, func() {
+	tid, ch := self.rc.TW.After(timeout, func() {
 	})
 
 	var resp interface{}
@@ -201,6 +199,7 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 		// 	//删除掉当前holder
 		return nil, TIMEOUT_ERROR
 	case resp = <-future:
+		self.rc.TW.Remove(tid)
 		return resp, nil
 	}
 

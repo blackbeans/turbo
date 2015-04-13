@@ -18,10 +18,10 @@ type Session struct {
 	remoteAddr   string
 	br           *bufio.Reader
 	bw           *bufio.Writer
-	idleTimer    *time.Timer        //空闲timer
 	ReadChannel  chan packet.Packet //request的channel
 	WriteChannel chan packet.Packet //response的channel
 	isClose      bool
+	ioIdle       bool
 	rc           *turbo.RemotingConfig
 }
 
@@ -42,8 +42,7 @@ func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
 		WriteChannel: make(chan packet.Packet, rc.WriteChannelSize),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String(),
-		rc:           rc,
-		idleTimer:    time.NewTimer(rc.IdleTime)}
+		rc:           rc}
 	return session
 }
 
@@ -52,14 +51,7 @@ func (self *Session) RemotingAddr() string {
 }
 
 func (self *Session) Idle() bool {
-	select {
-	case <-self.idleTimer.C:
-		//超时，暂时IO处于空闲
-		return true
-	default:
-		//没有超时则是一直有读写
-		return false
-	}
+	return self.ioIdle
 }
 
 //读取
@@ -72,13 +64,13 @@ func (self *Session) ReadPacket() {
 	}()
 
 	//缓存本次包的数据
-	packetBuff := make([]byte, 0, self.rc.ReadBufferSize)
+	buff := make([]byte, 0, self.rc.ReadBufferSize)
 
 	for !self.isClose {
-		slice, err := self.br.ReadSlice(packet.CMD_CRLF[0])
+		line, err := self.br.ReadSlice(packet.CMD_CRLF[1])
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err {
-			packetBuff = packetBuff[:0]
+			buff = buff[:0]
 			// buff.Reset()
 			//链接是关闭的
 			if err == io.EOF ||
@@ -90,48 +82,32 @@ func (self *Session) ReadPacket() {
 			continue
 		}
 
-		//读取下一个字节
-		delim, err := self.br.ReadByte()
-		if nil != err {
-			packetBuff = packetBuff[:0]
-			//链接是关闭的
-			if err == io.EOF ||
-				err == syscall.EPIPE ||
-				err == syscall.ECONNRESET {
-				self.Close()
-				log.Error("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			}
-			continue
-		}
-
-		// l := buff.Len() + len(slice) + 1
-		l := len(packetBuff) + len(slice) + 1
+		l := len(buff) + len(line)
 		//如果是\n那么就是一个完整的包
 		if l >= packet.MAX_PACKET_BYTES {
 			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
 			return
-		} else if l > packet.PACKET_HEAD_LEN && delim == packet.CMD_CRLF[1] {
+		} else if l > packet.PACKET_HEAD_LEN && line[len(line)-2] == packet.CMD_CRLF[0] {
 
-			packetBuff = append(packetBuff, append(slice, delim)...)
-			packet, err := packet.UnmarshalTLV(packetBuff)
+			buff = append(buff, line...)
+			packet, err := packet.UnmarshalTLV(buff)
 			if nil != err || nil == packet {
-				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(packetBuff), packetBuff)
-				packetBuff = packetBuff[:0]
+				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(buff), buff)
+				buff = buff[:0]
 				continue
 			}
 
 			//写入缓冲
 			self.ReadChannel <- *packet
 			//重置buffer
-			packetBuff = packetBuff[:0]
-			self.idleTimer.Reset(self.rc.IdleTime)
+			buff = buff[:0]
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
 
 		} else {
-			packetBuff = append(packetBuff, append(slice, delim)...)
+			buff = append(buff, line...)
 		}
 	}
 }
@@ -189,11 +165,18 @@ func (self *Session) write0(tlv packet.Packet) {
 
 //写入响应
 func (self *Session) WritePacket() {
-
 	var p packet.Packet
+	tid, ch := self.rc.TW.After(self.rc.IdleTime, func() {})
 	for !self.isClose {
-		p = <-self.WriteChannel
-		self.write0(p)
+		select {
+		case p = <-self.WriteChannel:
+			self.write0(p)
+			self.rc.TW.Remove(tid)
+			tid, ch = self.rc.TW.After(self.rc.IdleTime, func() {})
+			self.ioIdle = false
+		case <-ch:
+			self.ioIdle = true
+		}
 	}
 }
 
