@@ -18,17 +18,17 @@ type Session struct {
 	remoteAddr   string
 	br           *bufio.Reader
 	bw           *bufio.Writer
-	ReadChannel  chan packet.Packet //request的channel
-	WriteChannel chan packet.Packet //response的channel
+	ReadChannel  chan *packet.Packet //request的channel
+	WriteChannel chan *packet.Packet //response的channel
 	isClose      bool
-	ioIdle       bool
+	lasttime     time.Time
 	rc           *turbo.RemotingConfig
 }
 
 func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
 
 	conn.SetKeepAlive(true)
-	conn.SetKeepAlivePeriod(3 * time.Second)
+	conn.SetKeepAlivePeriod(rc.IdleTime * 2)
 	//禁用nagle
 	conn.SetNoDelay(true)
 	conn.SetReadBuffer(rc.ReadBufferSize)
@@ -38,8 +38,8 @@ func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
 		conn:         conn,
 		br:           bufio.NewReaderSize(conn, rc.ReadBufferSize),
 		bw:           bufio.NewWriterSize(conn, rc.WriteBufferSize),
-		ReadChannel:  make(chan packet.Packet, rc.ReadChannelSize),
-		WriteChannel: make(chan packet.Packet, rc.WriteChannelSize),
+		ReadChannel:  make(chan *packet.Packet, rc.ReadChannelSize),
+		WriteChannel: make(chan *packet.Packet, rc.WriteChannelSize),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String(),
 		rc:           rc}
@@ -51,7 +51,8 @@ func (self *Session) RemotingAddr() string {
 }
 
 func (self *Session) Idle() bool {
-	return self.ioIdle
+	//当前时间如果大于 最后一次发包时间+2倍的idletime 则认为空心啊
+	return time.Now().After(self.lasttime.Add(self.rc.IdleTime))
 }
 
 //读取
@@ -102,7 +103,7 @@ func (self *Session) ReadPacket() {
 			}
 
 			//写入缓冲
-			self.ReadChannel <- *packet
+			self.ReadChannel <- packet
 			//重置buffer
 			buff = buff[:0]
 			if nil != self.rc.FlowStat {
@@ -113,7 +114,7 @@ func (self *Session) ReadPacket() {
 }
 
 //写出数据
-func (self *Session) Write(p packet.Packet) error {
+func (self *Session) Write(p *packet.Packet) error {
 	defer func() {
 		if err := recover(); nil != err {
 			log.Error("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
@@ -132,9 +133,9 @@ func (self *Session) Write(p packet.Packet) error {
 }
 
 //真正写入网络的流
-func (self *Session) write0(tlv packet.Packet) {
+func (self *Session) write0(tlv *packet.Packet) {
 
-	p := packet.MarshalPacket(&tlv)
+	p := packet.MarshalPacket(tlv)
 	if nil == p || len(p) <= 0 {
 		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
 		//如果是同步写出
@@ -165,18 +166,14 @@ func (self *Session) write0(tlv packet.Packet) {
 
 //写入响应
 func (self *Session) WritePacket() {
-	var p packet.Packet
-	tid, ch := self.rc.TW.After(self.rc.IdleTime, func() {})
+	var p *packet.Packet
 	for !self.isClose {
-		select {
-		case p = <-self.WriteChannel:
+		p = <-self.WriteChannel
+		if nil != p {
 			self.write0(p)
-			self.rc.TW.Remove(tid)
-			tid, ch = self.rc.TW.After(self.rc.IdleTime, func() {})
-			self.ioIdle = false
-		case <-ch:
-			self.ioIdle = true
+			self.lasttime = time.Now()
 		}
+
 	}
 }
 

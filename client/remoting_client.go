@@ -99,6 +99,9 @@ func (self *RemotingClient) dispatcherPacket() {
 		!self.remoteSession.Closed() {
 
 		p := <-self.remoteSession.ReadChannel
+		if nil == p {
+			continue
+		}
 		//获取协程处理分发包
 		self.rc.MaxDispatcherNum <- 1
 		self.rc.FlowStat.DispatcherWorkPool.Incr(1)
@@ -108,7 +111,7 @@ func (self *RemotingClient) dispatcherPacket() {
 				self.rc.FlowStat.DispatcherWorkPool.Incr(-1)
 			}()
 			//处理一下包
-			self.packetDispatcher(self, &p)
+			self.packetDispatcher(self, p)
 
 		}()
 
@@ -173,9 +176,10 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 //只是写出去
 func (self *RemotingClient) Write(p packet.Packet) (chan interface{}, error) {
 
-	opaque, future := self.fillOpaque(&p)
+	pp := &p
+	opaque, future := self.fillOpaque(pp)
 	self.rc.RequestHolder.Attach(opaque, future)
-	return future, self.remoteSession.Write(p)
+	return future, self.remoteSession.Write(pp)
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
@@ -184,8 +188,12 @@ var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	timeout time.Duration) (interface{}, error) {
 
+	pp := &p
+	opaque, future := self.fillOpaque(pp)
+	self.rc.RequestHolder.Attach(opaque, future)
+	err := self.remoteSession.Write(pp)
 	// //同步写出
-	future, err := self.Write(p)
+	// future, err := self.Write(p)
 	if nil != err {
 		return nil, err
 	}
