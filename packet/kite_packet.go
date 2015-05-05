@@ -51,49 +51,44 @@ func (self *Packet) marshal() []byte {
 
 var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
 
-func (self *Packet) unmarshal(b []byte) error {
-
-	if len(b) < PACKET_HEAD_LEN {
-		return errors.New(fmt.Sprintf("Corrupt PacketData|Less Than MIN LENGTH:%d/%d", len(b), PACKET_HEAD_LEN))
-	}
-
-	self.Opaque = int32(binary.BigEndian.Uint32(b[:4]))
-
-	self.CmdType = b[4]
-
-	dataLength := binary.BigEndian.Uint32(b[5:9])
-
-	if dataLength > 0 {
-		if int(dataLength) == len(b[9:]) && dataLength <= MAX_PACKET_BYTES {
-			//读取数据包
-			self.Data = make([]byte, dataLength)
-			copy(self.Data, b[9:])
-		} else {
-			if dataLength > MAX_PACKET_BYTES {
-				return errors.New(fmt.Sprintf("Too Large Packet %d|%d", dataLength, MAX_PACKET_BYTES))
-			}
-			return errors.New("Corrupt PacketData ")
-		}
+//read data full
+func (self *Packet) AppendData(b []byte) bool {
+	b = b[PACKET_HEAD_LEN : len(b)-2]
+	//data + \r\n == self.data 则数据包完整
+	if len(b) == cap(self.Data) {
+		//拷贝
+		self.Data = append(self.Data, bytes.TrimSuffix(b, CMD_CRLF)...)
+		return true
 	} else {
-		return errors.New("Unmarshal|NO Data")
+		//继续读取
+		return false
 	}
+}
 
-	return nil
+//datafull
+func (self *Packet) DataFull() bool {
+	return cap(self.Data) == len(self.Data)
 }
 
 func MarshalPacket(packet *Packet) []byte {
 	return packet.marshal()
 }
 
-//解码packet
-func UnmarshalTLV(packet []byte) (*Packet, error) {
-	packet = bytes.TrimSuffix(packet, CMD_CRLF)
+func UnmarshalTLV(b []byte) (*Packet, error) {
 
 	tlv := &Packet{}
-	err := tlv.unmarshal(packet)
-	if nil != err {
-		return tlv, err
-	} else {
-		return tlv, nil
+	if len(b) < PACKET_HEAD_LEN {
+		return nil, errors.New(
+			fmt.Sprintf("Corrupt PacketData|Less Than MIN LENGTH:%d/%d", len(b), PACKET_HEAD_LEN))
 	}
+
+	tlv.Opaque = int32(binary.BigEndian.Uint32(b[:4]))
+	tlv.CmdType = b[4]
+	dataLength := binary.BigEndian.Uint32(b[5:9])
+
+	if dataLength > MAX_PACKET_BYTES {
+		return nil, errors.New(fmt.Sprintf("Too Large Packet %d|%d", dataLength, MAX_PACKET_BYTES))
+	}
+	tlv.Data = make([]byte, 0, dataLength)
+	return tlv, nil
 }

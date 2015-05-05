@@ -78,7 +78,7 @@ func main() {
 		return false
 	})
 
-	ch := make(chan int, 100)
+	ch := make(chan int, 1)
 	for {
 		ch <- 1
 		go func() {

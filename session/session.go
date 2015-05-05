@@ -66,7 +66,7 @@ func (self *Session) ReadPacket() {
 
 	//缓存本次包的数据
 	buff := make([]byte, 0, self.rc.ReadBufferSize)
-
+	var tlv *packet.Packet
 	for !self.isClose {
 		line, err := self.br.ReadSlice(packet.CMD_CRLF[1])
 		//如果没有达到请求头的最小长度则继续读取
@@ -94,21 +94,40 @@ func (self *Session) ReadPacket() {
 		}
 
 		//complete packet
-		if l > packet.PACKET_HEAD_LEN && buff[len(buff)-2] == packet.CMD_CRLF[0] {
-			packet, err := packet.UnmarshalTLV(buff)
-			if nil != err || nil == packet {
-				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(buff), buff)
-				buff = buff[:0]
+		if buff[len(buff)-2] == packet.CMD_CRLF[0] {
+
+			//还没有tlv则umarshaltlv
+			if nil == tlv && l >= packet.PACKET_HEAD_LEN {
+				packet, err := packet.UnmarshalTLV(buff)
+				if nil != err || nil == packet {
+					log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(buff), buff)
+					buff = buff[:0]
+					continue
+				}
+				tlv = packet
+			} else if nil == tlv && l < packet.PACKET_HEAD_LEN {
+				//不够包头则再次读取
 				continue
 			}
 
+			if nil != tlv {
+				//如果tlv不为空则直接拼接数据
+				full := tlv.AppendData(buff)
+				if !full {
+					continue
+				}
+			}
+
+			p := tlv
+			tlv = nil
 			//写入缓冲
-			self.ReadChannel <- packet
+			self.ReadChannel <- p
 			//重置buffer
-			buff = buff[:0]
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
+
+			buff = buff[:0]
 		}
 	}
 }
