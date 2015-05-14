@@ -5,35 +5,6 @@ import (
 	"sync/atomic"
 )
 
-type RemotingFlow struct {
-	Name               string
-	OptimzeStatus      bool //当前优化的状态
-	ReadFlow           *Flow
-	DispatcherWorkPool *Flow //处理
-	DispatcherFlow     *Flow
-	WriteFlow          *Flow
-}
-
-func NewRemotingFlow(name string) *RemotingFlow {
-	return &RemotingFlow{
-		OptimzeStatus:      true,
-		Name:               name,
-		ReadFlow:           &Flow{},
-		DispatcherWorkPool: &Flow{},
-		DispatcherFlow:     &Flow{},
-		WriteFlow:          &Flow{}}
-}
-
-func (self *RemotingFlow) Monitor() string {
-
-	line := fmt.Sprintf("%s:\t\tread:%d\t\tdispatcher:%d\t\twrite:%d\t\t", self.Name, self.ReadFlow.Changes(),
-		self.DispatcherFlow.Changes(), self.WriteFlow.Changes())
-	if nil != self.DispatcherWorkPool {
-		line = fmt.Sprintf("%sdispatcher-pool:%d\t\t", line, self.DispatcherWorkPool.count)
-	}
-	return line
-}
-
 //network stat
 type NetworkStat struct {
 	ReadCount       int32 `json:"read_count"`
@@ -43,13 +14,45 @@ type NetworkStat struct {
 	ConnectionCount int32 `json:"connection_count"`
 }
 
+type RemotingFlow struct {
+	Name               string
+	OptimzeStatus      bool //当前优化的状态
+	ReadFlow           *Flow
+	DispatcherWorkPool *Flow //处理
+	DispatcherFlow     *Flow
+	WriteFlow          *Flow
+	currentStat        *NetworkStat
+}
+
+func NewRemotingFlow(name string) *RemotingFlow {
+	return &RemotingFlow{
+		OptimzeStatus:      true,
+		Name:               name,
+		ReadFlow:           &Flow{},
+		DispatcherWorkPool: &Flow{},
+		DispatcherFlow:     &Flow{},
+		WriteFlow:          &Flow{},
+		currentStat:        &NetworkStat{}}
+}
+
+func (self *RemotingFlow) Monitor() string {
+
+	self.currentStat.ReadCount = self.ReadFlow.Changes()
+	self.currentStat.WriteCount = self.WriteFlow.Changes()
+	self.currentStat.DispatcherCount = self.DispatcherFlow.Changes()
+
+	line := fmt.Sprintf("%s:\t\tread:%d\t\tdispatcher:%d\t\twrite:%d\t\t", self.Name, self.currentStat.ReadCount,
+		self.currentStat.DispatcherCount, self.currentStat.WriteCount)
+	if nil != self.DispatcherWorkPool {
+		self.currentStat.DispatcherGo = self.DispatcherWorkPool.count
+		line = fmt.Sprintf("%sdispatcher-pool:%d\t\t", line, self.currentStat.DispatcherGo)
+	}
+	return line
+}
+
 //网络状态
 func (self *RemotingFlow) Stat() NetworkStat {
-	return NetworkStat{
-		ReadCount:       self.ReadFlow.Changes(),
-		WriteCount:      self.WriteFlow.Changes(),
-		DispatcherCount: self.DispatcherFlow.Changes(),
-		DispatcherGo:    self.DispatcherWorkPool.count}
+	return *self.currentStat
 }
 
 type Flow struct {
