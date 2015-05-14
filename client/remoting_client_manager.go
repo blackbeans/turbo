@@ -52,8 +52,8 @@ func (self *ClientManager) evict() {
 }
 
 //connection numbers
-func (self *ClientManager) ConnNum() int {
-	i := 0
+func (self *ClientManager) ConnNum() int32 {
+	i := int32(0)
 	clients := self.ClientsClone()
 	for _, c := range clients {
 		if !c.IsClosed() {
