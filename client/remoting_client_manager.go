@@ -51,6 +51,18 @@ func (self *ClientManager) evict() {
 	}
 }
 
+//connection numbers
+func (self *ClientManager) ConnNum() int {
+	i := 0
+	clients := self.ClientsClone()
+	for _, c := range clients {
+		if !c.IsClosed() {
+			i++
+		}
+	}
+	return i
+}
+
 //验证是否授权
 func (self *ClientManager) Validate(remoteClient *RemotingClient) bool {
 	self.lock.RLock()

@@ -34,6 +34,24 @@ func (self *RemotingFlow) Monitor() string {
 	return line
 }
 
+//network stat
+type NetworkStat struct {
+	ReadCount       int32 `json:"read_count"`
+	WriteCount      int32 `json:"write_count"`
+	DispatcherCount int32 `json:"dispatcher_count"`
+	DispatcherGo    int32 `json:"dispatcher_go"`
+	ConnectionCount int32 `json:"connection_count"`
+}
+
+//网络状态
+func (self *RemotingFlow) Stat() NetworkStat {
+	return NetworkStat{
+		ReadCount:       self.ReadFlow.Changes(),
+		WriteCount:      self.WriteFlow.Changes(),
+		DispatcherCount: self.DispatcherFlow.Changes(),
+		DispatcherGo:    self.DispatcherWorkPool.count}
+}
+
 type Flow struct {
 	count     int32
 	lastcount int32

@@ -68,6 +68,12 @@ func (self *RemotingServer) Start() {
 	t.Stop()
 }
 
+//networkstat
+func (self *RemotingServer) NetworkStat() turbo.NetworkStat {
+	return self.rc.FlowStat.Stat()
+
+}
+
 func (self *RemotingServer) serve(l *StoppedListener) error {
 	for !self.isShutdown {
 		conn, err := l.Accept()
