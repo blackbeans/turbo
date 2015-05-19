@@ -35,7 +35,7 @@ func main() {
 	rcc := turbo.NewRemotingConfig(
 		"turbo-client:localhost:28888",
 		1000, 16*1024,
-		16*1024, 10000, 10000,
+		16*1024, 20000, 20000,
 		10*time.Second, 160000)
 
 	go func() {
@@ -78,19 +78,30 @@ func main() {
 		return false
 	})
 
-	ch := make(chan int, 1)
-	for {
-		ch <- 1
-		go func() {
+	ch := make(chan chan interface{}, 2000)
 
+	go func() {
+		for {
+			c := <-ch
+			<-c
+		}
+	}()
+
+	concurrent := make(chan int, 1)
+
+	for {
+		concurrent <- 1
+		go func() {
+			rch, err := tmp["a"][0].Write(*p)
 			//write command and wait for response
-			_, err := tmp["a"][0].WriteAndGet(*p, 500*time.Millisecond)
+			// _, err := tmp["a"][0].WriteAndGet(*p, 500*time.Millisecond)
 			if nil != err {
 				log.Printf("WAIT RESPONSE FAIL|%s\n", err)
 			} else {
 				// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
 			}
-			<-ch
+			ch <- rch
+			<-concurrent
 		}()
 	}
 

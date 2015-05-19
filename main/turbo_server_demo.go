@@ -29,7 +29,7 @@ func main() {
 	rc := turbo.NewRemotingConfig(
 		"turbo-server:localhost:28888",
 		1000, 16*1024,
-		16*1024, 10000, 10000,
+		16*1024, 20000, 20000,
 		10*time.Second, 160000)
 
 	remoteServer := server.NewRemotionServer("localhost:28888", rc, packetDispatcher)
