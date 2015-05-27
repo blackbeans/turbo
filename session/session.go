@@ -192,7 +192,15 @@ func (self *Session) WritePacket() {
 			self.write0(p)
 			self.lasttime = time.Now()
 		}
+	}
 
+	//deal left packet
+	for {
+		_, ok := <-self.WriteChannel
+		if !ok {
+			//channel closed
+			break
+		}
 	}
 }
 
