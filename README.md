@@ -5,6 +5,20 @@ turbo is a lightweight  remoting framework
 
 go get github.com/blackbeans/turbo
 
+
+#### benchmark
+
+main/turbo_server_demo.go
+
+main/turbo_client_demo.go
+
+env: 
+
+	2.5 GHz Intel Core i7  16GRAM  macbook pro
+
+	1 connection 1 groutine  70000 tps
+
+
 ##### quickstart
 
 server：
