@@ -161,21 +161,35 @@ func (self *Session) write0(tlv *packet.Packet) {
 		return
 	}
 
-	length, err := self.conn.Write(p)
-	if nil != err {
-		log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(p))
-		//链接是关闭的
-		if err == io.EOF ||
-			err == syscall.EPIPE || err == syscall.ECONNRESET {
-			self.Close()
-			return
+	l := 0
+	tmp := p
+	for {
+		length, err := self.bw.Write(tmp)
+		if nil != err {
+			log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(tmp))
+			//链接是关闭的
+			if err == io.EOF ||
+				err == syscall.EPIPE || err == syscall.ECONNRESET {
+				self.Close()
+				return
+			}
+
+			//如果没有写够则再写一次
+			if err == io.ErrShortWrite {
+				self.bw.Reset(self.conn)
+			}
 		}
 
-		//如果没有写够则再写一次
-		if err == io.ErrShortWrite {
-			self.conn.Write(p[length:])
+		l += length
+		//write finish
+		if l == len(p) {
+			break
 		}
+		tmp = p[l:]
 	}
+
+	//flush
+	self.bw.Flush()
 
 	if nil != self.rc.FlowStat {
 		self.rc.FlowStat.WriteFlow.Incr(1)
