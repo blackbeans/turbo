@@ -227,9 +227,12 @@ func (self *Session) Close() error {
 
 	if !self.isClose {
 		self.isClose = true
+		//flush
+		self.bw.Flush()
 		self.conn.Close()
 		close(self.WriteChannel)
 		close(self.ReadChannel)
+
 		log.Debug("Session|Close|%s...\n", self.remoteAddr)
 	}
 	return nil
