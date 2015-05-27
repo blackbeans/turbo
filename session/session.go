@@ -164,7 +164,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 	l := 0
 	tmp := p
 	for {
-		length, err := self.conn.Write(tmp)
+		length, err := self.bw.Write(tmp)
 		if nil != err {
 			log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(tmp))
 			//链接是关闭的
@@ -175,7 +175,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 
 			//如果没有写够则再写一次
 			if err == io.ErrShortWrite {
-				// self.bw.Reset(self.conn)
+				self.bw.Reset(self.conn)
 			}
 		}
 
@@ -188,7 +188,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 	}
 
 	// //flush
-	// self.bw.Flush()
+	self.bw.Flush()
 
 	if nil != self.rc.FlowStat {
 		self.rc.FlowStat.WriteFlow.Incr(1)

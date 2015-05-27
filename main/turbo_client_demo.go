@@ -87,22 +87,22 @@ func main() {
 		}
 	}()
 
-	concurrent := make(chan int, 1)
+	// concurrent := make(chan int, 1)
 
 	for {
-		concurrent <- 1
-		go func() {
-			rch, err := tmp["a"][0].Write(*p)
-			//write command and wait for response
-			// _, err := tmp["a"][0].WriteAndGet(*p, 500*time.Millisecond)
-			if nil != err {
-				log.Printf("WAIT RESPONSE FAIL|%s\n", err)
-			} else {
-				// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
-			}
-			ch <- rch
-			<-concurrent
-		}()
+		// concurrent <- 1
+		// go func() {
+		// rch, err := tmp["a"][0].Write(*p)
+		//write command and wait for response
+		_, err := tmp["a"][0].WriteAndGet(*p, 3000*time.Millisecond)
+		if nil != err {
+			log.Printf("WAIT RESPONSE FAIL|%s\n", err)
+		} else {
+			// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
+		}
+		// ch <- rch
+		// <-concurrent
+		// }()
 	}
 
 	select {}
