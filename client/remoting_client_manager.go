@@ -89,7 +89,6 @@ func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) b
 func (self *ClientManager) ClientsClone() map[string]*RemotingClient {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
-
 	clone := make(map[string]*RemotingClient, len(self.allClients))
 	for k, v := range self.allClients {
 		clone[k] = v

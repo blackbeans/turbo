@@ -168,8 +168,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 		if nil != err {
 			log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(tmp))
 			//链接是关闭的
-			if err == io.EOF ||
-				err == syscall.EPIPE || err == syscall.ECONNRESET {
+			if err != io.ErrShortWrite {
 				self.Close()
 				return
 			}
