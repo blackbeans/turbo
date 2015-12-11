@@ -78,18 +78,19 @@ func main() {
 		return false
 	})
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		go func() {
 			for {
 
 				//write command and wait for response
-				_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
+				resp, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
 				if nil != err {
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)
 					break
 				} else {
-					// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
+					log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
 				}
+				break
 
 			}
 		}()

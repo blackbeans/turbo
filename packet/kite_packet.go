@@ -13,7 +13,7 @@ type Packet struct {
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
-	h := &PacketHeader{Opaque: -1, CmdType: cmdtype}
+	h := &PacketHeader{Opaque: -1, CmdType: cmdtype, BodyLen: int32(len(data))}
 	return &Packet{Header: h,
 		Data: data}
 }
@@ -52,7 +52,8 @@ func UnmarshalTLV(buff *bytes.Buffer) (*Packet, error) {
 		return nil, errors.New(
 			fmt.Sprintf("Corrupt PacketData|Less Than MIN LENGTH:%d/%d", buff.Len(), PACKET_HEAD_LEN))
 	}
-	header, err := UnmarshalHeader(buff)
+	reader := bytes.NewReader(buff.Next(PACKET_HEAD_LEN))
+	header, err := UnmarshalHeader(reader)
 	if nil != err {
 		return nil, errors.New(
 			fmt.Sprintf("Corrupt PacketHeader|%s", err.Error()))

@@ -19,18 +19,18 @@ func MarshalHeader(header *PacketHeader, bodyLen int32) *bytes.Buffer {
 	b := make([]byte, 0, 4+PACKET_HEAD_LEN+bodyLen)
 	buff := bytes.NewBuffer(b)
 	//写入包头长度
-	binary.Write(buff, binary.BigEndian, int32(PACKET_HEAD_LEN+bodyLen))
-	binary.Write(buff, binary.BigEndian, header.Opaque)
-	binary.Write(buff, binary.BigEndian, header.CmdType)
-	binary.Write(buff, binary.BigEndian, header.Version)
-	binary.Write(buff, binary.BigEndian, header.Extension)
-	binary.Write(buff, binary.BigEndian, bodyLen)
+
+	codec.Write(buff, binary.BigEndian, int32(PACKET_HEAD_LEN+bodyLen))
+	codec.Write(buff, binary.BigEndian, header.Opaque)
+	codec.Write(buff, binary.BigEndian, header.CmdType)
+	codec.Write(buff, binary.BigEndian, header.Version)
+	codec.Write(buff, binary.BigEndian, header.Extension)
+	codec.Write(buff, binary.BigEndian, bodyLen)
 	return buff
 }
 
-func UnmarshalHeader(buff *bytes.Buffer) (*PacketHeader, error) {
+func UnmarshalHeader(r *bytes.Reader) (*PacketHeader, error) {
 	header := &PacketHeader{}
-	r := bytes.NewReader(buff.Bytes())
 	err := codec.Read(r, binary.BigEndian, &(header.Opaque))
 	if nil != err {
 		return nil, err
