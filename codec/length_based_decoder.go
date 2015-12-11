@@ -34,13 +34,21 @@ func (self LengthBasedFrameDecoder) Read(reader *bufio.Reader) (*bytes.Buffer, e
 	}
 
 	buff := make([]byte, int(length))
-	l, err := reader.Read(buff)
-	if nil != err {
-		return nil, err
-	}
+	tmp := buff
+	l := 0
+	for {
+		rl, err := reader.Read(tmp)
+		if nil != err {
+			return nil, err
+		}
+		l += rl
 
-	if l < int(length) {
-		return nil, errors.New("ILLEGAL DATA PACKET!")
+		if l < int(length) {
+			tmp = tmp[rl:]
+			continue
+		} else {
+			break
+		}
 	}
 	return bytes.NewBuffer(buff), nil
 }

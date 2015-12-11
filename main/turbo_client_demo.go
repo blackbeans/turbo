@@ -12,7 +12,7 @@ import (
 )
 
 func clientPacketDispatcher(rclient *client.RemotingClient, resp *packet.Packet) {
-	rclient.Attach(resp.Opaque, resp.Data)
+	rclient.Attach(resp.Header.Opaque, resp.Data)
 	// log.Printf("clientPacketDispatcher|%s\n", string(resp.Data))
 }
 
@@ -78,27 +78,18 @@ func main() {
 		return false
 	})
 
-	ch := make(chan chan interface{}, 2000)
-
-	go func() {
-		for {
-			c := <-ch
-			<-c
-		}
-	}()
-
 	for i := 0; i < 10; i++ {
 		go func() {
 			for {
-				// rch, err := tmp["a"][0].Write(*p)
+
 				//write command and wait for response
-				_, err := tmp["a"][0].WriteAndGet(*p, 3000*time.Millisecond)
+				_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
 				if nil != err {
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)
+					break
 				} else {
 					// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
 				}
-				ch <- rch
 
 			}
 		}()
