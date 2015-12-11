@@ -150,11 +150,11 @@ func (self *RemotingClient) Pong(opaque int32, version int64) {
 }
 
 func (self *RemotingClient) fillOpaque(p *packet.Packet) (int32, chan interface{}) {
-	tid := p.Opaque
+	tid := p.Header.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
 		id := self.rc.RequestHolder.CurrentOpaque()
-		p.Opaque = id
+		p.Header.Opaque = id
 		tid = id
 	}
 

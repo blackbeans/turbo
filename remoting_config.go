@@ -2,7 +2,6 @@ package turbo
 
 import (
 	// 	log "github.com/blackbeans/log4go"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -31,11 +30,11 @@ func NewRemotingConfig(name string,
 
 	//定义holder
 	holders := make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
-	locks := make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
+	locks := make([]chan bool, 0, CONCURRENT_LEVEL)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		splitMap := make(map[int32]chan interface{}, maxOpaque/CONCURRENT_LEVEL)
 		holders = append(holders, splitMap)
-		locks = append(locks, &sync.Mutex{})
+		locks = append(locks, make(chan bool, 1))
 	}
 	rh := &ReqHolder{
 		opaque:    0,
@@ -60,7 +59,7 @@ func NewRemotingConfig(name string,
 type ReqHolder struct {
 	maxOpaque int
 	opaque    uint32
-	locks     []*sync.Mutex
+	locks     []chan bool
 	holders   []map[int32]chan interface{}
 }
 
@@ -72,8 +71,8 @@ func (self *ReqHolder) CurrentOpaque() int32 {
 func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 
 	l, m := self.locker(opaque)
-	l.Lock()
-	defer l.Unlock()
+	l <- true
+	defer func() { <-l }()
 
 	ch, ok := m[opaque]
 	if ok {
@@ -86,11 +85,11 @@ func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 
 func (self *ReqHolder) Attach(opaque int32, ch chan interface{}) {
 	l, m := self.locker(opaque)
-	l.Lock()
-	defer l.Unlock()
+	l <- true
+	defer func() { <-l }()
 	m[opaque] = ch
 }
 
-func (self *ReqHolder) locker(id int32) (*sync.Mutex, map[int32]chan interface{}) {
+func (self *ReqHolder) locker(id int32) (chan bool, map[int32]chan interface{}) {
 	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
 }

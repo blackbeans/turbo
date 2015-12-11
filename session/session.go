@@ -6,10 +6,10 @@ import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"io"
 	"net"
-	"syscall"
 	"time"
 )
 
@@ -23,6 +23,7 @@ type Session struct {
 	isClose      bool
 	lasttime     time.Time
 	rc           *turbo.RemotingConfig
+	decoder      codec.IDecoder
 }
 
 func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
@@ -42,7 +43,10 @@ func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
 		WriteChannel: make(chan *packet.Packet, rc.WriteChannelSize),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String(),
-		rc:           rc}
+		decoder: codec.LengthBasedFrameDecoder{
+			MaxFrameLength: packet.MAX_PACKET_BYTES,
+			SkipLength:     4},
+		rc: rc}
 	return session
 }
 
@@ -58,77 +62,38 @@ func (self *Session) Idle() bool {
 //读取
 func (self *Session) ReadPacket() {
 
-	defer func() {
-		if err := recover(); nil != err {
-			log.Error("Session|ReadPacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
-		}
-	}()
-
 	//缓存本次包的数据
-	buff := make([]byte, 0, self.rc.ReadBufferSize)
-	var tlv *packet.Packet
 	for !self.isClose {
-		line, err := self.br.ReadSlice(packet.CMD_CRLF[1])
-		//如果没有达到请求头的最小长度则继续读取
-		if nil != err {
-			buff = buff[:0]
-			// buff.Reset()
-			//链接是关闭的
-			if err == io.EOF ||
-				err == syscall.EPIPE ||
-				err == syscall.ECONNRESET {
+
+		func() {
+			defer func() {
+				if err := recover(); nil != err {
+					log.Error("Session|ReadPacket|%s|recover|FAIL|%s", self.remoteAddr, err)
+				}
+			}()
+			buffer, err := self.decoder.Read(self.br)
+			if nil != err {
 				self.Close()
-				log.Error("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			}
-			continue
-		}
-
-		l := len(buff) + len(line)
-		//如果是\n那么就是一个完整的包
-		if l >= packet.MAX_PACKET_BYTES {
-			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			self.Close()
-			return
-		} else {
-			buff = append(buff, line...)
-		}
-
-		//complete packet
-		if buff[len(buff)-2] == packet.CMD_CRLF[0] {
-
-			//还没有tlv则umarshaltlv
-			if nil == tlv && l >= packet.PACKET_HEAD_LEN {
-				packet, err := packet.UnmarshalTLV(buff)
-				if nil != err || nil == packet {
-					log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, len(buff), buff)
-					buff = buff[:0]
-					continue
-				}
-				tlv = packet
-			} else if nil == tlv && l < packet.PACKET_HEAD_LEN {
-				//不够包头则再次读取
-				continue
+				log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
+				return
+			} else {
+				// log.Debug("Session|ReadPacket|%s|SUCC|%d", self.remoteAddr, buffer.Len())
 			}
 
-			if nil != tlv {
-				//如果tlv不为空则直接拼接数据
-				full := tlv.AppendData(buff)
-				if !full {
-					continue
-				}
+			p, err := packet.UnmarshalTLV(buffer)
+			if nil != err {
+				self.Close()
+				log.Error("Session|ReadPacket|MarshalPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
+				return
 			}
 
-			p := tlv
-			tlv = nil
 			//写入缓冲
 			self.ReadChannel <- p
 			//重置buffer
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
-
-			buff = buff[:0]
-		}
+		}()
 	}
 }
 
@@ -136,7 +101,7 @@ func (self *Session) ReadPacket() {
 func (self *Session) Write(p *packet.Packet) error {
 	defer func() {
 		if err := recover(); nil != err {
-			log.Error("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
+			log.Error("Session|Write|%s|recover|FAIL|%s", self.remoteAddr, err)
 		}
 	}()
 
@@ -156,7 +121,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 
 	p := packet.MarshalPacket(tlv)
 	if nil == p || len(p) <= 0 {
-		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
+		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", tlv)
 		//如果是同步写出
 		return
 	}
@@ -166,7 +131,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 	for {
 		length, err := self.bw.Write(tmp)
 		if nil != err {
-			log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(tmp))
+			log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d", self.remoteAddr, err, length, len(tmp))
 			//链接是关闭的
 			if err != io.ErrShortWrite {
 				self.Close()
@@ -232,7 +197,7 @@ func (self *Session) Close() error {
 		close(self.WriteChannel)
 		close(self.ReadChannel)
 
-		log.Debug("Session|Close|%s...\n", self.remoteAddr)
+		log.Debug("Session|Close|%s...", self.remoteAddr)
 	}
 	return nil
 }

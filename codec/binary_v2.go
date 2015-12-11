@@ -1,4 +1,4 @@
-package packet
+package codec
 
 import (
 	b "encoding/binary"

@@ -18,14 +18,14 @@ var clientf = turbo.NewRemotingFlow("turbo-client:localhost:28888")
 func clientPacketDispatcher(rclient *client.RemotingClient, resp *packet.Packet) {
 	clientf.ReadFlow.Incr(1)
 	clientf.DispatcherFlow.Incr(1)
-	rclient.Attach(resp.Opaque, resp.Data)
+	rclient.Attach(resp.Header.Opaque, resp.Data)
 }
 
 func packetDispatcher(rclient *client.RemotingClient, p *packet.Packet) {
 	flow.ReadFlow.Incr(1)
 	flow.DispatcherFlow.Incr(1)
 
-	resp := packet.NewRespPacket(p.Opaque, p.CmdType, p.Data)
+	resp := packet.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
 	//直接回写回去
 	rclient.Write(*resp)
 	flow.WriteFlow.Incr(1)
@@ -79,9 +79,10 @@ func BenchmarkRemoteClient(t *testing.B) {
 	t.SetParallelism(4)
 
 	t.RunParallel(func(pb *testing.PB) {
-		p := packet.NewPacket(1, []byte("echo"))
+
 		for pb.Next() {
 			for i := 0; i < t.N; i++ {
+				p := packet.NewPacket(1, []byte("echo"))
 				tmp := clientManager.FindRemoteClients([]string{"a"}, func(groupid string, c *client.RemotingClient) bool {
 					return false
 				})
@@ -89,6 +90,7 @@ func BenchmarkRemoteClient(t *testing.B) {
 				_, err := tmp["a"][0].WriteAndGet(*p, 500*time.Millisecond)
 				clientf.WriteFlow.Incr(1)
 				if nil != err {
+					t.Fail()
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)
 				} else {
 					// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
