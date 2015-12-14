@@ -104,20 +104,16 @@ func (self *RemotingClient) dispatcherPacket() {
 		}
 		//获取协程处理分发包
 		self.rc.MaxDispatcherNum <- 1
-		self.rc.FlowStat.DispatcherWorkPool.Incr(1)
+		self.rc.FlowStat.DispatcherGo.Incr(1)
 		go func() {
 			defer func() {
 				<-self.rc.MaxDispatcherNum
-				self.rc.FlowStat.DispatcherWorkPool.Incr(-1)
+				self.rc.FlowStat.DispatcherGo.Incr(-1)
 			}()
 			//处理一下包
 			self.packetDispatcher(self, p)
 
 		}()
-
-		if nil != self.rc.FlowStat {
-			self.rc.FlowStat.DispatcherFlow.Incr(1)
-		}
 	}
 
 }

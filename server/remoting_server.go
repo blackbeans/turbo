@@ -1,7 +1,6 @@
 package server
 
 import (
-	"atom"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
@@ -53,7 +52,6 @@ func (self *RemotingServer) ListenAndServer() error {
 
 	//开始服务获取连接
 	go self.serve(stopListener)
-	go self.Start()
 	return nil
 
 }

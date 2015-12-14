@@ -19,7 +19,7 @@ type RemotingFlow struct {
 	OptimzeStatus  bool //当前优化的状态
 	ReadFlow       *Flow
 	ReadBytesFlow  *Flow
-	DispatcherGo   int32
+	DispatcherGo   *Flow
 	WriteFlow      *Flow
 	WriteBytesFlow *Flow
 }
@@ -30,7 +30,7 @@ func NewRemotingFlow(name string) *RemotingFlow {
 		Name:           name,
 		ReadFlow:       &Flow{},
 		ReadBytesFlow:  &Flow{},
-		DispatcherGo:   0,
+		DispatcherGo:   &Flow{},
 		WriteFlow:      &Flow{},
 		WriteBytesFlow: &Flow{}}
 }
@@ -40,7 +40,7 @@ func (self *RemotingFlow) Stat() NetworkStat {
 	return NetworkStat{
 		ReadCount:    self.ReadFlow.Changes(),
 		ReadBytes:    self.ReadBytesFlow.Changes(),
-		DispatcherGo: 0,
+		DispatcherGo: self.DispatcherGo.Changes(),
 		WriteCount:   self.WriteFlow.Changes(),
 		WriteBytes:   self.WriteBytesFlow.Changes(),
 		Connections:  0}
