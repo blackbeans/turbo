@@ -92,6 +92,7 @@ func (self *Session) ReadPacket() {
 			//重置buffer
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
+				self.rc.FlowStat.ReadBytesFlow.Incr(int32(buffer.Len()))
 			}
 		}()
 	}
@@ -157,6 +158,7 @@ func (self *Session) write0(tlv *packet.Packet) {
 
 	if nil != self.rc.FlowStat {
 		self.rc.FlowStat.WriteFlow.Incr(1)
+		self.rc.FlowStat.WriteBytesFlow.Incr(int32(len(p)))
 	}
 
 }

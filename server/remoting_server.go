@@ -1,6 +1,7 @@
 package server
 
 import (
+	"atom"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
@@ -57,17 +58,6 @@ func (self *RemotingServer) ListenAndServer() error {
 
 }
 
-func (self *RemotingServer) Start() {
-
-	t := time.NewTicker(1 * time.Second)
-	for !self.isShutdown {
-		line := self.rc.FlowStat.Monitor()
-		log.Info(line)
-		<-t.C
-	}
-	t.Stop()
-}
-
 //networkstat
 func (self *RemotingServer) NetworkStat() turbo.NetworkStat {
 	return self.rc.FlowStat.Stat()
@@ -81,7 +71,6 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 			log.Error("RemotingServer|serve|AcceptTCP|FAIL|%s\n", err)
 			continue
 		} else {
-
 			// log.Debug("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
 			remoteClient := client.NewRemotingClient(conn, self.packetDispatcher, self.rc)

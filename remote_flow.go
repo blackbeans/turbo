@@ -1,71 +1,62 @@
 package turbo
 
 import (
-	"fmt"
 	"sync/atomic"
 )
 
 //network stat
 type NetworkStat struct {
-	ReadCount       int32 `json:"read_count"`
-	WriteCount      int32 `json:"write_count"`
-	DispatcherCount int32 `json:"dispatcher_count"`
-	DispatcherGo    int32 `json:"dispatcher_go"`
-	ConnectionCount int32 `json:"connection_count"`
+	ReadCount    int32 `json:"read_count"`
+	ReadBytes    int32 `json:"read_bytes"`
+	WriteCount   int32 `json:"write_count"`
+	WriteBytes   int32 `json:"write_bytes"`
+	DispatcherGo int32 `json:"dispatcher_go"`
+	Connections  int32 `json:"connections"`
 }
 
 type RemotingFlow struct {
-	Name               string
-	OptimzeStatus      bool //当前优化的状态
-	ReadFlow           *Flow
-	DispatcherWorkPool *Flow //处理
-	DispatcherFlow     *Flow
-	WriteFlow          *Flow
-	currentStat        *NetworkStat
+	Name           string
+	OptimzeStatus  bool //当前优化的状态
+	ReadFlow       *Flow
+	ReadBytesFlow  *Flow
+	DispatcherGo   int32
+	WriteFlow      *Flow
+	WriteBytesFlow *Flow
 }
 
 func NewRemotingFlow(name string) *RemotingFlow {
 	return &RemotingFlow{
-		OptimzeStatus:      true,
-		Name:               name,
-		ReadFlow:           &Flow{},
-		DispatcherWorkPool: &Flow{},
-		DispatcherFlow:     &Flow{},
-		WriteFlow:          &Flow{},
-		currentStat:        &NetworkStat{}}
-}
-
-func (self *RemotingFlow) Monitor() string {
-
-	self.currentStat.ReadCount = self.ReadFlow.Changes()
-	self.currentStat.WriteCount = self.WriteFlow.Changes()
-	self.currentStat.DispatcherCount = self.DispatcherFlow.Changes()
-
-	line := fmt.Sprintf("%s:\t\tread:%d\t\tdispatcher:%d\t\twrite:%d\t\t", self.Name, self.currentStat.ReadCount,
-		self.currentStat.DispatcherCount, self.currentStat.WriteCount)
-	if nil != self.DispatcherWorkPool {
-		self.currentStat.DispatcherGo = self.DispatcherWorkPool.count
-		line = fmt.Sprintf("%sdispatcher-pool:%d\t\t", line, self.currentStat.DispatcherGo)
-	}
-	return line
+		OptimzeStatus:  true,
+		Name:           name,
+		ReadFlow:       &Flow{},
+		ReadBytesFlow:  &Flow{},
+		DispatcherGo:   0,
+		WriteFlow:      &Flow{},
+		WriteBytesFlow: &Flow{}}
 }
 
 //网络状态
 func (self *RemotingFlow) Stat() NetworkStat {
-	return *self.currentStat
+	return NetworkStat{
+		ReadCount:    self.ReadFlow.Changes(),
+		ReadBytes:    self.ReadBytesFlow.Changes(),
+		DispatcherGo: 0,
+		WriteCount:   self.WriteFlow.Changes(),
+		WriteBytes:   self.WriteBytesFlow.Changes(),
+		Connections:  0}
 }
 
 type Flow struct {
-	count     int32
-	lastcount int32
+	count     int64
+	lastcount int64
 }
 
 func (self *Flow) Incr(num int32) {
-	atomic.AddInt32(&self.count, num)
+	atomic.AddInt64(&self.count, int64(num))
 }
 
 func (self *Flow) Count() int32 {
-	return self.count
+	return int32(self.count)
 }
 
 func (self *Flow) Changes() int32 {
@@ -73,5 +64,5 @@ func (self *Flow) Changes() int32 {
 	tmpl := self.lastcount
 	c := tmpc - tmpl
 	self.lastcount = tmpc
-	return c
+	return int32(c)
 }
