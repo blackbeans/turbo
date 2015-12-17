@@ -2,7 +2,6 @@ package pipe
 
 import (
 	"errors"
-	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
@@ -110,11 +109,10 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo
 			idx := rand.Intn(len(c))
 			//克隆一份
 			f, err := c[idx].Write(packet)
-			addr := fmt.Sprintf("%s[%s]", gid, c[idx].RemoteAddr())
 			if nil != err {
-				futures[gid] = turbo.NewErrFuture(-1, addr, err)
+				futures[gid] = turbo.NewErrFuture(-1, c[idx].RemoteAddr(), err)
 			} else {
-				f.TargetHost = addr
+				f.TargetHost = c[idx].RemoteAddr()
 				futures[gid] = f
 			}
 		}
