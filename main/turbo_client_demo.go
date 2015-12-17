@@ -40,7 +40,7 @@ func main() {
 
 	go func() {
 		for {
-			log.Println(rcc.FlowStat.Monitor())
+			log.Println(rcc.FlowStat.Stat())
 			time.Sleep(1 * time.Second)
 		}
 	}()
@@ -83,14 +83,13 @@ func main() {
 			for {
 
 				//write command and wait for response
-				resp, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
+				_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
 				if nil != err {
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)
 					break
 				} else {
-					log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
+					// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
 				}
-				break
 
 			}
 		}()

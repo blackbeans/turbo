@@ -1,18 +1,17 @@
 package pipe
 
 import (
+	"errors"
+	"fmt"
 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
 	"math/rand"
 )
 
 //没有链接的分组直接失败
-var EMPTY_FUTURE = make(map[string]chan interface{}, 0)
-var QUICK_FAILGROUP_FUTURE = make(chan interface{}, 1)
-
-func init() {
-	close(QUICK_FAILGROUP_FUTURE)
-}
+var EMPTY_FUTURE = make(map[string]*turbo.Future, 0)
+var ERROR_NO_HOSTS = errors.New("NO VALID RemoteClient")
 
 //远程操作的remotinghandler
 
@@ -46,7 +45,7 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	}
 
 	// log.Printf("RemotingHandler|Process|%s|%t\n", self.GetName(), revent)
-	var futures map[string]chan interface{}
+	var futures map[string]*turbo.Future
 	if len(revent.GroupIds) <= 0 && len(revent.TargetHost) <= 0 {
 		log.Warn("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%s|%s\n", self.GetName(), revent)
 		futures = EMPTY_FUTURE
@@ -68,10 +67,10 @@ func (self *RemotingHandler) invokeSingle(event *RemotingEvent) error {
 	return nil
 }
 
-func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan interface{} {
+func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo.Future {
 
 	//特别的失败分组，为了减少chan的创建数
-	futures := make(map[string]chan interface{}, 10)
+	futures := make(map[string]*turbo.Future, 10)
 	packet := *event.Packet
 	if len(event.TargetHost) > 0 {
 		//特定机器
@@ -81,7 +80,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 				//写到响应的channel中
 				f, err := rclient.Write(packet)
 				if nil != err {
-					futures[host] = QUICK_FAILGROUP_FUTURE
+					futures[host] = turbo.NewErrFuture(-1, rclient.RemoteAddr(), err)
 				} else {
 					futures[host] = f
 				}
@@ -89,7 +88,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			} else {
 				//记为失败的下次需要重新发送
 				// log.Debug("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
-				futures[host] = QUICK_FAILGROUP_FUTURE
+				futures[host] = turbo.NewErrFuture(-1, "no remoteclient", ERROR_NO_HOSTS)
 			}
 		}
 	}
@@ -111,9 +110,11 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			idx := rand.Intn(len(c))
 			//克隆一份
 			f, err := c[idx].Write(packet)
+			addr := fmt.Sprintf("%s[%s]", gid, c[idx].RemoteAddr())
 			if nil != err {
-				futures[gid] = QUICK_FAILGROUP_FUTURE
+				futures[gid] = turbo.NewErrFuture(-1, addr, err)
 			} else {
+				f.TargetHost = addr
 				futures[gid] = f
 			}
 		}
@@ -123,7 +124,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 	for _, g := range event.GroupIds {
 		_, ok := futures[g]
 		if !ok {
-			futures[g] = QUICK_FAILGROUP_FUTURE
+			futures[g] = turbo.NewErrFuture(-1, g, ERROR_NO_HOSTS)
 		}
 	}
 

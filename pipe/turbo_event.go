@@ -1,6 +1,7 @@
 package pipe
 
 import (
+	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
 	"github.com/blackbeans/turbo/packet"
 )
@@ -47,10 +48,10 @@ func NewHeartbeatEvent(remoteClient *client.RemotingClient, opaque int32, versio
 //远程操作事件
 type RemotingEvent struct {
 	Event      IForwardEvent
-	futures    chan map[string]chan interface{} //所有的回调的future
-	TargetHost []string                         //发送的特定hostport
-	GroupIds   []string                         //本次发送的分组
-	Packet     *packet.Packet                   //tlv的packet数据
+	futures    chan map[string]*turbo.Future //所有的回调的future
+	TargetHost []string                      //发送的特定hostport
+	GroupIds   []string                      //本次发送的分组
+	Packet     *packet.Packet                //tlv的packet数据
 }
 
 func NewRemotingEvent(packet *packet.Packet, targetHost []string, groupIds ...string) *RemotingEvent {
@@ -58,7 +59,7 @@ func NewRemotingEvent(packet *packet.Packet, targetHost []string, groupIds ...st
 		TargetHost: targetHost,
 		GroupIds:   groupIds,
 		Packet:     packet,
-		futures:    make(chan map[string]chan interface{}, 1)}
+		futures:    make(chan map[string]*turbo.Future, 1)}
 	return revent
 }
 
@@ -67,7 +68,7 @@ func (self *RemotingEvent) AttachEvent(Event IForwardEvent) {
 }
 
 //等待响应
-func (self *RemotingEvent) Wait() map[string]chan interface{} {
+func (self *RemotingEvent) Wait() map[string]*turbo.Future {
 	return <-self.futures
 }
 
@@ -75,11 +76,11 @@ func (self *RemotingEvent) Wait() map[string]chan interface{} {
 type RemoteFutureEvent struct {
 	IBackwardEvent
 	*RemotingEvent
-	Futures map[string] /*groupid*/ chan interface{} //网络结果回调
+	Futures map[string] /*groupid*/ *turbo.Future //网络结果回调
 }
 
 //网络回调事件
-func NewRemoteFutureEvent(remoteEvent *RemotingEvent, futures map[string]chan interface{}) *RemoteFutureEvent {
+func NewRemoteFutureEvent(remoteEvent *RemotingEvent, futures map[string]*turbo.Future) *RemoteFutureEvent {
 	fe := &RemoteFutureEvent{Futures: futures}
 	fe.RemotingEvent = remoteEvent
 	return fe

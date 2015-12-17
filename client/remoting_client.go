@@ -145,7 +145,7 @@ func (self *RemotingClient) Pong(opaque int32, version int64) {
 	self.updateHeartBeat(version)
 }
 
-func (self *RemotingClient) fillOpaque(p *packet.Packet) (int32, chan interface{}) {
+func (self *RemotingClient) fillOpaque(p *packet.Packet) int32 {
 	tid := p.Header.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
@@ -154,7 +154,7 @@ func (self *RemotingClient) fillOpaque(p *packet.Packet) (int32, chan interface{
 		tid = id
 	}
 
-	return tid, make(chan interface{}, 1)
+	return tid
 }
 
 //将结果attach到当前的等待回调chan
@@ -170,22 +170,22 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 }
 
 //只是写出去
-func (self *RemotingClient) Write(p packet.Packet) (chan interface{}, error) {
+func (self *RemotingClient) Write(p packet.Packet) (*turbo.Future, error) {
 
 	pp := &p
-	opaque, future := self.fillOpaque(pp)
+	opaque := self.fillOpaque(pp)
+	future := turbo.NewFuture(opaque, self.localAddr)
 	self.rc.RequestHolder.Attach(opaque, future)
 	return future, self.remoteSession.Write(pp)
 }
-
-var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
 //写数据并且得到相应
 func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	timeout time.Duration) (interface{}, error) {
 
 	pp := &p
-	opaque, future := self.fillOpaque(pp)
+	opaque := self.fillOpaque(pp)
+	future := turbo.NewFuture(opaque, self.localAddr)
 	self.rc.RequestHolder.Attach(opaque, future)
 	err := self.remoteSession.Write(pp)
 	// //同步写出
@@ -197,15 +197,9 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	tid, ch := self.rc.TW.After(timeout, func() {
 	})
 
-	var resp interface{}
-	select {
-	case <-ch:
-		// 	//删除掉当前holder
-		return nil, TIMEOUT_ERROR
-	case resp = <-future:
-		self.rc.TW.Remove(tid)
-		return resp, nil
-	}
+	resp, err := future.Get(ch)
+	self.rc.TW.Remove(tid)
+	return resp, err
 
 }
 

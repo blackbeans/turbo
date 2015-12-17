@@ -1,6 +1,7 @@
 package turbo
 
 import (
+	"fmt"
 	"sync/atomic"
 )
 
@@ -12,6 +13,11 @@ type NetworkStat struct {
 	WriteBytes   int32 `json:"write_bytes"`
 	DispatcherGo int32 `json:"dispatcher_go"`
 	Connections  int32 `json:"connections"`
+}
+
+func (self NetworkStat) String() string {
+	return fmt.Sprintf("read:%d/%d\twrite:%d/%d\tgo:%d\tconns:%d", self.ReadBytes, self.ReadCount,
+		self.WriteBytes, self.WriteCount, self.DispatcherGo, self.Connections)
 }
 
 type RemotingFlow struct {

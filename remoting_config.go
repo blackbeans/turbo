@@ -2,6 +2,7 @@ package turbo
 
 import (
 	// 	log "github.com/blackbeans/log4go"
+	"errors"
 	"sync/atomic"
 	"time"
 )
@@ -9,6 +10,58 @@ import (
 const (
 	CONCURRENT_LEVEL = 8
 )
+
+var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
+
+//-----------响应的future
+type Future struct {
+	opaque     int32
+	response   chan interface{}
+	TargetHost string
+	Err        error
+}
+
+func NewFuture(opaque int32, TargetHost string) *Future {
+	return &Future{
+		opaque,
+		make(chan interface{}, 1),
+		TargetHost,
+		nil}
+}
+
+//创建有错误的future
+func NewErrFuture(opaque int32, TargetHost string, err error) *Future {
+	return &Future{
+		opaque,
+		nil,
+		TargetHost,
+		err}
+}
+
+func (self Future) Error(err error) {
+	self.Err = err
+	close(self.response)
+}
+
+func (self Future) SetResponse(resp interface{}) {
+	self.response <- resp
+	close(self.response)
+}
+
+func (self Future) Get(timeout chan bool) (interface{}, error) {
+
+	if nil != self.Err {
+		return nil, self.Err
+	}
+	//如果没有错误直接等待结果
+	select {
+	case <-timeout:
+		// 	//删除掉当前holder
+		return nil, TIMEOUT_ERROR
+	case resp := <-self.response:
+		return resp, nil
+	}
+}
 
 //网络层参数
 type RemotingConfig struct {
@@ -29,10 +82,10 @@ func NewRemotingConfig(name string,
 	idletime time.Duration, maxOpaque int) *RemotingConfig {
 
 	//定义holder
-	holders := make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
+	holders := make([]map[int32]*Future, 0, CONCURRENT_LEVEL)
 	locks := make([]chan bool, 0, CONCURRENT_LEVEL)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[int32]chan interface{}, maxOpaque/CONCURRENT_LEVEL)
+		splitMap := make(map[int32]*Future, maxOpaque/CONCURRENT_LEVEL)
 		holders = append(holders, splitMap)
 		locks = append(locks, make(chan bool, 1))
 	}
@@ -60,7 +113,7 @@ type ReqHolder struct {
 	maxOpaque int
 	opaque    uint32
 	locks     []chan bool
-	holders   []map[int32]chan interface{}
+	holders   []map[int32]*Future
 }
 
 func (self *ReqHolder) CurrentOpaque() int32 {
@@ -74,22 +127,21 @@ func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 	l <- true
 	defer func() { <-l }()
 
-	ch, ok := m[opaque]
+	future, ok := m[opaque]
 	if ok {
 		delete(m, opaque)
-		ch <- obj
-		close(ch)
+		future.SetResponse(obj)
 		// log.Printf("ReqHolder|Attach|%s|%s\n", opaque, obj)
 	}
 }
 
-func (self *ReqHolder) Attach(opaque int32, ch chan interface{}) {
+func (self *ReqHolder) Attach(opaque int32, future *Future) {
 	l, m := self.locker(opaque)
 	l <- true
 	defer func() { <-l }()
-	m[opaque] = ch
+	m[opaque] = future
 }
 
-func (self *ReqHolder) locker(id int32) (chan bool, map[int32]chan interface{}) {
+func (self *ReqHolder) locker(id int32) (chan bool, map[int32]*Future) {
 	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
 }
