@@ -53,12 +53,24 @@ func (self Future) Get(timeout chan bool) (interface{}, error) {
 	if nil != self.Err {
 		return nil, self.Err
 	}
-	//如果没有错误直接等待结果
+
 	select {
-	case <-timeout:
-		// 	//删除掉当前holder
+	case resp := <-timeout:
+		//如果是空的则已经超时，使用非阻塞方式直接获取当前结果
+		if false == resp {
+			select {
+			case resp := <-self.response:
+				return resp, nil
+			default:
+				//如果是已经超时了但是当前还是没有响应也认为超时
+				return nil, TIMEOUT_ERROR
+			}
+		}
+		//如果是因为本次超时引起的则直接返回超时
 		return nil, TIMEOUT_ERROR
+
 	case resp := <-self.response:
+		//如果没有错误直接等待结果
 		return resp, nil
 	}
 }
