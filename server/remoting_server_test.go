@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"log"
 	"net"
@@ -10,21 +11,14 @@ import (
 	"time"
 )
 
-var clientManager *client.ClientManager
-var remoteServer *RemotingServer
 var flow = turbo.NewRemotingFlow("turbo-server:localhost:28888")
 var clientf = turbo.NewRemotingFlow("turbo-client:localhost:28888")
 
 func clientPacketDispatcher(rclient *client.RemotingClient, resp *packet.Packet) {
-	clientf.ReadFlow.Incr(1)
-	clientf.DispatcherFlow.Incr(1)
 	rclient.Attach(resp.Header.Opaque, resp.Data)
 }
 
 func packetDispatcher(rclient *client.RemotingClient, p *packet.Packet) {
-	flow.ReadFlow.Incr(1)
-	flow.DispatcherFlow.Incr(1)
-
 	resp := packet.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
 	//直接回写回去
 	rclient.Write(*resp)
@@ -35,7 +29,7 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 	return true, nil
 }
 
-func init() {
+func BenchmarkRemoteClient(t *testing.B) {
 
 	rc := turbo.NewRemotingConfig(
 		"turbo-server:localhost:28888",
@@ -43,7 +37,7 @@ func init() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	remoteServer = NewRemotionServer("localhost:28888", rc, packetDispatcher)
+	remoteServer := NewRemotionServer("localhost:28888", rc, packetDispatcher)
 	remoteServer.ListenAndServer()
 
 	conn, _ := dial("localhost:28888")
@@ -51,7 +45,7 @@ func init() {
 	// //重连管理器
 	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)
 
-	clientManager = client.NewClientManager(reconnManager)
+	clientManager := client.NewClientManager(reconnManager)
 
 	rcc := turbo.NewRemotingConfig(
 		"turbo-client:localhost:28888",
@@ -59,7 +53,11 @@ func init() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	remoteClient := client.NewRemotingClient(conn, clientPacketDispatcher, rcc)
+	remoteClient := client.NewRemotingClient(conn, func() codec.ICodec {
+		return codec.LengthBasedCodec{
+			MaxFrameLength: packet.MAX_PACKET_BYTES,
+			SkipLength:     4}
+	}, clientPacketDispatcher, rcc)
 	remoteClient.Start()
 
 	auth := &client.GroupAuth{}
@@ -68,14 +66,10 @@ func init() {
 	clientManager.Auth(auth, remoteClient)
 	go func() {
 		for {
-			log.Println(clientf.Monitor())
 			time.Sleep(1 * time.Second)
 		}
 	}()
 
-}
-
-func BenchmarkRemoteClient(t *testing.B) {
 	t.SetParallelism(4)
 
 	t.RunParallel(func(pb *testing.PB) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/session"
 	"net"
@@ -19,14 +20,15 @@ type RemotingClient struct {
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, p *packet.Packet) //包处理函数
+	codecFunc        func() codec.ICodec
 	rc               *turbo.RemotingConfig
 }
 
-func NewRemotingClient(conn *net.TCPConn,
+func NewRemotingClient(conn *net.TCPConn, codecFunc func() codec.ICodec,
 	packetDispatcher func(remoteClient *RemotingClient, p *packet.Packet),
 	rc *turbo.RemotingConfig) *RemotingClient {
 
-	remoteSession := session.NewSession(conn, rc)
+	remoteSession := session.NewSession(conn, rc, codecFunc())
 
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
@@ -34,7 +36,8 @@ func NewRemotingClient(conn *net.TCPConn,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
-		rc:               rc}
+		rc:               rc,
+		codecFunc:        codecFunc}
 
 	return remotingClient
 }
@@ -84,7 +87,7 @@ func (self *RemotingClient) reconnect() (bool, error) {
 	//重新设置conn
 	self.conn = conn
 	//创建session
-	self.remoteSession = session.NewSession(self.conn, self.rc)
+	self.remoteSession = session.NewSession(self.conn, self.rc, self.codecFunc())
 
 	//再次启动remoteClient
 	self.Start()

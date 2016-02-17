@@ -4,6 +4,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"net"
 	"time"
@@ -16,6 +17,7 @@ type RemotingServer struct {
 	isShutdown       bool
 	packetDispatcher func(remoteClient *client.RemotingClient, p *packet.Packet)
 	rc               *turbo.RemotingConfig
+	codecFunc        func() codec.ICodec
 }
 
 func NewRemotionServer(hostport string, rc *turbo.RemotingConfig,
@@ -30,7 +32,30 @@ func NewRemotionServer(hostport string, rc *turbo.RemotingConfig,
 		packetDispatcher: packetDispatcher,
 		isShutdown:       false,
 		rc:               rc,
-		keepalive:        5 * time.Second}
+		keepalive:        5 * time.Second,
+		codecFunc: func() codec.ICodec {
+			return codec.LengthBasedCodec{
+				MaxFrameLength: packet.MAX_PACKET_BYTES,
+				SkipLength:     4}
+
+		}}
+	return server
+}
+
+func NewRemotionServerWithCodec(hostport string, rc *turbo.RemotingConfig, codecFunc func() codec.ICodec,
+	packetDispatcher func(remoteClient *client.RemotingClient, p *packet.Packet)) *RemotingServer {
+
+	//设置为8个并发
+	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
+
+	server := &RemotingServer{
+		hostport:         hostport,
+		stopChan:         make(chan bool, 1),
+		packetDispatcher: packetDispatcher,
+		isShutdown:       false,
+		rc:               rc,
+		keepalive:        5 * time.Second,
+		codecFunc:        codecFunc}
 	return server
 }
 
@@ -71,7 +96,8 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 		} else {
 			// log.Debug("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
-			remoteClient := client.NewRemotingClient(conn, self.packetDispatcher, self.rc)
+
+			remoteClient := client.NewRemotingClient(conn, self.codecFunc, self.packetDispatcher, self.rc)
 			remoteClient.Start()
 		}
 	}

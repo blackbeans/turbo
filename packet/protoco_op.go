@@ -5,7 +5,3 @@ const (
 	MAX_PACKET_BYTES = 32 * 1024
 	PACKET_HEAD_LEN  = (4 + 1 + 2 + 8 + 4) //请求头部长度	 int32
 )
-
-var CMD_CRLF = []byte{'\r', '\n'}
-
-var CMD_STR_CRLF = "\r\n"

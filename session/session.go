@@ -23,10 +23,11 @@ type Session struct {
 	isClose      bool
 	lasttime     time.Time
 	rc           *turbo.RemotingConfig
-	decoder      codec.IDecoder
+	frameCodec   codec.ICodec
 }
 
-func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
+func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig,
+	frameCodec codec.ICodec) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(rc.IdleTime * 2)
@@ -43,10 +44,8 @@ func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig) *Session {
 		WriteChannel: make(chan *packet.Packet, rc.WriteChannelSize),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String(),
-		decoder: codec.LengthBasedFrameDecoder{
-			MaxFrameLength: packet.MAX_PACKET_BYTES,
-			SkipLength:     4},
-		rc: rc}
+		frameCodec:   frameCodec,
+		rc:           rc}
 	return session
 }
 
@@ -71,7 +70,7 @@ func (self *Session) ReadPacket() {
 					log.Error("Session|ReadPacket|%s|recover|FAIL|%s", self.remoteAddr, err)
 				}
 			}()
-			buffer, err := self.decoder.Read(self.br)
+			buffer, err := self.frameCodec.Read(self.br)
 			if nil != err {
 				self.Close()
 				log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
@@ -80,13 +79,13 @@ func (self *Session) ReadPacket() {
 				// log.Debug("Session|ReadPacket|%s|SUCC|%d", self.remoteAddr, buffer.Len())
 			}
 
-			p, err := packet.UnmarshalTLV(buffer)
+			p, err := self.frameCodec.UnmarshalPacket(buffer)
 			if nil != err {
 				self.Close()
 				log.Error("Session|ReadPacket|MarshalPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
 				return
 			}
-
+			// fmt.Println("ReadPacket|" + self.RemotingAddr() + "\t" + string(p.Data))
 			//写入缓冲
 			self.ReadChannel <- p
 			//重置buffer
@@ -120,7 +119,7 @@ func (self *Session) Write(p *packet.Packet) error {
 //真正写入网络的流
 func (self *Session) write0(tlv *packet.Packet) {
 
-	p := packet.MarshalPacket(tlv)
+	p := self.frameCodec.MarshalPacket(tlv)
 	if nil == p || len(p) <= 0 {
 		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", tlv)
 		//如果是同步写出
@@ -152,10 +151,8 @@ func (self *Session) write0(tlv *packet.Packet) {
 		}
 		tmp = p[l:]
 	}
-
 	// //flush
 	self.bw.Flush()
-
 	if nil != self.rc.FlowStat {
 		self.rc.FlowStat.WriteFlow.Incr(1)
 		self.rc.FlowStat.WriteBytesFlow.Incr(int32(len(p)))

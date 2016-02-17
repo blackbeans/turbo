@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"log"
 	"net"
@@ -62,7 +63,11 @@ func main() {
 		return conn, nil
 	}("localhost:28888")
 
-	remoteClient := client.NewRemotingClient(conn, clientPacketDispatcher, rcc)
+	remoteClient := client.NewRemotingClient(conn, func() codec.ICodec {
+		return codec.LengthBasedCodec{
+			MaxFrameLength: packet.MAX_PACKET_BYTES,
+			SkipLength:     4}
+	}, clientPacketDispatcher, rcc)
 	remoteClient.Start()
 
 	auth := &client.GroupAuth{}

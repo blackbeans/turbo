@@ -1,7 +1,6 @@
 package turbo
 
 import (
-	// 	log "github.com/blackbeans/log4go"
 	"errors"
 	"sync/atomic"
 	"time"

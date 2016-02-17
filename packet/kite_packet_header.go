@@ -3,7 +3,6 @@ package packet
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/blackbeans/turbo/codec"
 )
 
 //packet的包头部分
@@ -20,38 +19,38 @@ func MarshalHeader(header *PacketHeader, bodyLen int32) *bytes.Buffer {
 	buff := bytes.NewBuffer(b)
 	//写入包头长度
 
-	codec.Write(buff, binary.BigEndian, int32(PACKET_HEAD_LEN+bodyLen))
-	codec.Write(buff, binary.BigEndian, header.Opaque)
-	codec.Write(buff, binary.BigEndian, header.CmdType)
-	codec.Write(buff, binary.BigEndian, header.Version)
-	codec.Write(buff, binary.BigEndian, header.Extension)
-	codec.Write(buff, binary.BigEndian, bodyLen)
+	Write(buff, binary.BigEndian, int32(PACKET_HEAD_LEN+bodyLen))
+	Write(buff, binary.BigEndian, header.Opaque)
+	Write(buff, binary.BigEndian, header.CmdType)
+	Write(buff, binary.BigEndian, header.Version)
+	Write(buff, binary.BigEndian, header.Extension)
+	Write(buff, binary.BigEndian, bodyLen)
 	return buff
 }
 
 func UnmarshalHeader(r *bytes.Reader) (*PacketHeader, error) {
 	header := &PacketHeader{}
-	err := codec.Read(r, binary.BigEndian, &(header.Opaque))
+	err := Read(r, binary.BigEndian, &(header.Opaque))
 	if nil != err {
 		return nil, err
 	}
 
-	err = codec.Read(r, binary.BigEndian, &(header.CmdType))
+	err = Read(r, binary.BigEndian, &(header.CmdType))
 	if nil != err {
 		return nil, err
 	}
 
-	err = codec.Read(r, binary.BigEndian, &(header.Version))
+	err = Read(r, binary.BigEndian, &(header.Version))
 	if nil != err {
 		return nil, err
 	}
 
-	err = codec.Read(r, binary.BigEndian, &(header.Extension))
+	err = Read(r, binary.BigEndian, &(header.Extension))
 	if nil != err {
 		return nil, err
 	}
 
-	err = codec.Read(r, binary.BigEndian, &(header.BodyLen))
+	err = Read(r, binary.BigEndian, &(header.BodyLen))
 	if nil != err {
 		return nil, err
 	}

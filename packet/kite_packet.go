@@ -1,11 +1,5 @@
 package packet
 
-import (
-	"bytes"
-	"errors"
-	"fmt"
-)
-
 //请求的packet
 type Packet struct {
 	Header *PacketHeader
@@ -28,7 +22,7 @@ func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 	return p
 }
 
-func (self *Packet) marshal() []byte {
+func (self *Packet) Marshal() []byte {
 	dl := 0
 	if nil != self.Data {
 		dl = len(self.Data)
@@ -37,33 +31,4 @@ func (self *Packet) marshal() []byte {
 	buff := MarshalHeader(self.Header, int32(dl))
 	buff.Write(self.Data)
 	return buff.Bytes()
-}
-
-var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
-
-func MarshalPacket(packet *Packet) []byte {
-	return packet.marshal()
-}
-
-func UnmarshalTLV(buff *bytes.Buffer) (*Packet, error) {
-
-	tlv := &Packet{}
-	if buff.Len() < PACKET_HEAD_LEN {
-		return nil, errors.New(
-			fmt.Sprintf("Corrupt PacketData|Less Than MIN LENGTH:%d/%d", buff.Len(), PACKET_HEAD_LEN))
-	}
-	reader := bytes.NewReader(buff.Next(PACKET_HEAD_LEN))
-	header, err := UnmarshalHeader(reader)
-	if nil != err {
-		return nil, errors.New(
-			fmt.Sprintf("Corrupt PacketHeader|%s", err.Error()))
-	}
-
-	if header.BodyLen > MAX_PACKET_BYTES {
-		return nil, errors.New(fmt.Sprintf("Too Large Packet %d|%d", header.BodyLen, MAX_PACKET_BYTES))
-	}
-	tlv.Header = header
-	tlv.Data = buff.Bytes()
-
-	return tlv, nil
 }
