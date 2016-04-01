@@ -9,6 +9,7 @@ import (
 	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"io"
+	"math"
 	"net"
 	"time"
 )
@@ -78,7 +79,7 @@ func (self *Session) ReadPacket() {
 			} else {
 				// log.Debug("Session|ReadPacket|%s|SUCC|%d", self.remoteAddr, buffer.Len())
 			}
-
+			bl := buffer.Len()
 			p, err := self.frameCodec.UnmarshalPacket(buffer)
 			if nil != err {
 				self.Close()
@@ -91,7 +92,7 @@ func (self *Session) ReadPacket() {
 			//重置buffer
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
-				self.rc.FlowStat.ReadBytesFlow.Incr(int32(buffer.Len()))
+				self.rc.FlowStat.ReadBytesFlow.Incr(int32(bl))
 			}
 		}()
 	}
@@ -117,17 +118,24 @@ func (self *Session) Write(p *packet.Packet) error {
 }
 
 //真正写入网络的流
-func (self *Session) write0(tlv *packet.Packet) {
+func (self *Session) write0(tlv []*packet.Packet) {
+	batch := make([]byte, 0, len(tlv)*128)
+	for _, t := range tlv {
+		p := self.frameCodec.MarshalPacket(t)
+		if nil == p || len(p) <= 0 {
+			log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", t)
+			//如果是同步写出
+			continue
+		}
+		batch = append(batch, p...)
+	}
 
-	p := self.frameCodec.MarshalPacket(tlv)
-	if nil == p || len(p) <= 0 {
-		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", tlv)
-		//如果是同步写出
+	if len(batch) <= 0 {
 		return
 	}
 
 	l := 0
-	tmp := p
+	tmp := batch
 	for {
 		length, err := self.bw.Write(tmp)
 		if nil != err {
@@ -146,29 +154,46 @@ func (self *Session) write0(tlv *packet.Packet) {
 
 		l += length
 		//write finish
-		if l == len(p) {
+		if l == len(batch) {
 			break
 		}
-		tmp = p[l:]
+		tmp = batch[l:]
 	}
 	// //flush
 	self.bw.Flush()
 	if nil != self.rc.FlowStat {
 		self.rc.FlowStat.WriteFlow.Incr(1)
-		self.rc.FlowStat.WriteBytesFlow.Incr(int32(len(p)))
+		self.rc.FlowStat.WriteBytesFlow.Incr(int32(len(batch)))
 	}
 
 }
 
 //写入响应
 func (self *Session) WritePacket() {
-	var p *packet.Packet
+	packets := make([]*packet.Packet, 0, 100)
 	for !self.isClose {
-		p = <-self.WriteChannel
+
+		p := <-self.WriteChannel
 		if nil != p {
-			self.write0(p)
-			self.lasttime = time.Now()
+			packets = append(packets, p)
 		}
+		l := int(math.Min(float64(len(self.WriteChannel)), 100))
+		//如果channel的长度还有数据批量最多读取100合并写出
+		//减少系统调用
+		for i := 0; i < l; i++ {
+			p := <-self.WriteChannel
+			if nil != p {
+				packets = append(packets, p)
+			}
+		}
+
+		if len(packets) > 0 {
+			//批量写入
+			self.write0(packets)
+			self.lasttime = time.Now()
+			packets = packets[:0]
+		}
+
 	}
 
 	//deal left packet

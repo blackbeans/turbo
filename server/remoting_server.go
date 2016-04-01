@@ -32,7 +32,7 @@ func NewRemotionServer(hostport string, rc *turbo.RemotingConfig,
 		packetDispatcher: packetDispatcher,
 		isShutdown:       false,
 		rc:               rc,
-		keepalive:        5*time.Minute,
+		keepalive:        5 * time.Minute,
 		codecFunc: func() codec.ICodec {
 			return codec.LengthBasedCodec{
 				MaxFrameLength: packet.MAX_PACKET_BYTES,
@@ -54,7 +54,7 @@ func NewRemotionServerWithCodec(hostport string, rc *turbo.RemotingConfig, codec
 		packetDispatcher: packetDispatcher,
 		isShutdown:       false,
 		rc:               rc,
-		keepalive:        5*time.Minute,
+		keepalive:        5 * time.Minute,
 		codecFunc:        codecFunc}
 	return server
 }
