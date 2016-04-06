@@ -22,6 +22,7 @@ type RemotingClient struct {
 	packetDispatcher func(remoteClient *RemotingClient, p *packet.Packet) //包处理函数
 	codecFunc        func() codec.ICodec
 	rc               *turbo.RemotingConfig
+	AttachChannel    chan interface{} //用于处理统一个连接上返回信息
 }
 
 func NewRemotingClient(conn *net.TCPConn, codecFunc func() codec.ICodec,
@@ -37,7 +38,8 @@ func NewRemotingClient(conn *net.TCPConn, codecFunc func() codec.ICodec,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
 		rc:               rc,
-		codecFunc:        codecFunc}
+		codecFunc:        codecFunc,
+		AttachChannel:    make(chan interface{}, 100)}
 
 	return remotingClient
 }
