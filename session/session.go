@@ -47,6 +47,8 @@ func NewSession(conn *net.TCPConn, rc *turbo.RemotingConfig,
 		remoteAddr:   conn.RemoteAddr().String(),
 		frameCodec:   frameCodec,
 		rc:           rc}
+	//连接数计数
+	rc.FlowStat.Connections.Incr(1)
 	return session
 }
 
@@ -220,8 +222,9 @@ func (self *Session) Close() error {
 		self.conn.Close()
 		close(self.WriteChannel)
 		close(self.ReadChannel)
-
-		log.Debug("Session|Close|%s...", self.remoteAddr)
+		self.rc.FlowStat.Connections.Incr(-1)
+		log.Debug("Sessio`n|Close|%s...", self.remoteAddr)
 	}
+
 	return nil
 }

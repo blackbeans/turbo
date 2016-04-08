@@ -112,8 +112,8 @@ func (self *RemotingClient) dispatcherPacket() {
 		self.rc.FlowStat.DispatcherGo.Incr(1)
 		go func() {
 			defer func() {
-				<-self.rc.MaxDispatcherNum
 				self.rc.FlowStat.DispatcherGo.Incr(-1)
+				<-self.rc.MaxDispatcherNum
 			}()
 			//处理一下包
 			self.packetDispatcher(self, p)

@@ -16,8 +16,8 @@ type NetworkStat struct {
 }
 
 func (self NetworkStat) String() string {
-	return fmt.Sprintf("read:%d/%d\twrite:%d/%d\tgo:%d\tconns:%d", self.ReadBytes, self.ReadCount,
-		self.WriteBytes, self.WriteCount, self.DispatcherGo, self.Connections)
+	return fmt.Sprintf("read:%dKB/%d\twrite:%dKB/%d\tgo:%d\tconns:%d", self.ReadBytes/1024, self.ReadCount,
+		self.WriteBytes/1024, self.WriteCount, self.DispatcherGo, self.Connections)
 }
 
 type RemotingFlow struct {
@@ -28,6 +28,7 @@ type RemotingFlow struct {
 	DispatcherGo   *Flow
 	WriteFlow      *Flow
 	WriteBytesFlow *Flow
+	Connections    *Flow
 }
 
 func NewRemotingFlow(name string) *RemotingFlow {
@@ -38,7 +39,8 @@ func NewRemotingFlow(name string) *RemotingFlow {
 		ReadBytesFlow:  &Flow{},
 		DispatcherGo:   &Flow{},
 		WriteFlow:      &Flow{},
-		WriteBytesFlow: &Flow{}}
+		WriteBytesFlow: &Flow{},
+		Connections:    &Flow{}}
 }
 
 //网络状态
@@ -46,10 +48,10 @@ func (self *RemotingFlow) Stat() NetworkStat {
 	return NetworkStat{
 		ReadCount:    self.ReadFlow.Changes(),
 		ReadBytes:    self.ReadBytesFlow.Changes(),
-		DispatcherGo: self.DispatcherGo.Changes(),
+		DispatcherGo: self.DispatcherGo.Count(),
 		WriteCount:   self.WriteFlow.Changes(),
 		WriteBytes:   self.WriteBytesFlow.Changes(),
-		Connections:  0}
+		Connections:  self.Connections.Count()}
 }
 
 type Flow struct {
