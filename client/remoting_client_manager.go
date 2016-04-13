@@ -2,6 +2,7 @@ package client
 
 import (
 	log "github.com/blackbeans/log4go"
+	"sort"
 	"sync"
 	"time"
 )
@@ -92,6 +93,22 @@ func (self *ClientManager) ClientsClone() map[string]*RemotingClient {
 	clone := make(map[string]*RemotingClient, len(self.allClients))
 	for k, v := range self.allClients {
 		clone[k] = v
+	}
+	return clone
+}
+
+//返回group到IP的对应关系
+func (self *ClientManager) CloneGroups() map[string][]string {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	clone := make(map[string][]string, len(self.groupClients))
+	for k, v := range self.groupClients {
+		clients := make([]string, 0, len(v))
+		for _, c := range v {
+			clients = append(clients, c.RemoteAddr())
+		}
+		sort.Strings(clients)
+		clone[k] = clients
 	}
 	return clone
 }
