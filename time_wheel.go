@@ -124,10 +124,13 @@ func (self *TimeWheel) notifyExpired(idx int) {
 		//remove
 		for e := remove.Back(); nil != e; e = e.Prev() {
 			re := e.Value.(*list.Element)
-			self.lock.Lock()
-			slots.hooks.Remove(e.Value.(*list.Element))
-			delete(self.hashWheel, re.Value.(*slotJob).id)
-			self.lock.Unlock()
+			func() {
+				self.lock.Lock()
+				defer self.lock.Unlock()
+				slots.hooks.Remove(e.Value.(*list.Element))
+				delete(self.hashWheel, re.Value.(*slotJob).id)
+
+			}()
 		}
 	}
 
