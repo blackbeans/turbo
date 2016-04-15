@@ -2,9 +2,14 @@ package turbo
 
 import (
 	"errors"
+	"sync"
 	"sync/atomic"
 	"time"
 )
+
+var futureChanPool = &sync.Pool{New: func() interface{} {
+	return make(chan interface{}, 1)
+}}
 
 const (
 	CONCURRENT_LEVEL = 8
@@ -18,36 +23,52 @@ type Future struct {
 	response   chan interface{}
 	TargetHost string
 	Err        error
+	valid      bool
 }
 
 func NewFuture(opaque int32, TargetHost string) *Future {
+
 	return &Future{
 		opaque,
-		make(chan interface{}, 1),
+		futureChanPool.Get().(chan interface{}),
 		TargetHost,
-		nil}
+		nil,
+		true}
 }
 
 //创建有错误的future
 func NewErrFuture(opaque int32, TargetHost string, err error) *Future {
 	return &Future{
 		opaque,
-		nil,
+		futureChanPool.Get().(chan interface{}),
 		TargetHost,
-		err}
+		err,
+		true}
 }
 
 func (self Future) Error(err error) {
 	self.Err = err
-	close(self.response)
+	if self.valid {
+		self.response <- err
+	}
 }
 
 func (self Future) SetResponse(resp interface{}) {
-	self.response <- resp
-	close(self.response)
+	if self.valid {
+		self.response <- resp
+	}
 }
 
 func (self Future) Get(timeout chan bool) (interface{}, error) {
+	//强制设置
+	defer func() {
+		//后收前释放赶紧这个channel
+		select {
+		case <-self.response:
+		default:
+		}
+		futureChanPool.Put(self.response)
+	}()
 
 	if nil != self.Err {
 		return nil, self.Err
@@ -55,8 +76,9 @@ func (self Future) Get(timeout chan bool) (interface{}, error) {
 
 	select {
 	case resp := <-timeout:
+
 		//如果是空的则已经超时，使用非阻塞方式直接获取当前结果
-		if false == resp {
+		if !resp {
 			select {
 			case resp := <-self.response:
 				return resp, nil
@@ -65,12 +87,19 @@ func (self Future) Get(timeout chan bool) (interface{}, error) {
 				return nil, TIMEOUT_ERROR
 			}
 		}
+		//标记为过期不允许设置response
+		self.valid = false
 		//如果是因为本次超时引起的则直接返回超时
 		return nil, TIMEOUT_ERROR
 
 	case resp := <-self.response:
-		//如果没有错误直接等待结果
-		return resp, nil
+		e, ok := resp.(error)
+		if ok {
+			return nil, e
+		} else {
+			//如果没有错误直接等待结果
+			return resp, nil
+		}
 	}
 }
 

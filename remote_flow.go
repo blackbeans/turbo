@@ -64,11 +64,11 @@ func (self *Flow) Incr(num int32) {
 }
 
 func (self *Flow) Count() int32 {
-	return int32(self.count)
+	return int32(atomic.LoadInt64(&self.count))
 }
 
 func (self *Flow) Changes() int32 {
-	tmpc := self.count
+	tmpc := atomic.LoadInt64(&self.count)
 	tmpl := self.lastcount
 	c := tmpc - tmpl
 	self.lastcount = tmpc

@@ -1,9 +1,29 @@
 package turbo
 
 import (
+	// "fmt"
+	// "sync"
+	// "sync/atomic"
 	"testing"
 	"time"
 )
+
+// func TestTimeWheelCheck(t *testing.T) {
+// 	currentTick := int32(0)
+// 	tick := time.NewTicker(1 * time.Second)
+// 	var lock sync.Mutex
+// 	for i := 0; ; i++ {
+// 		i = i % 10
+// 		<-tick.C
+// 		lock.Lock()
+// 		atomic.StoreInt32(&currentTick, int32(i))
+// 		lock.Unlock()
+// 		// tw.currentTick = i
+// 		// tw.lock.Unlock()
+// 		//notify expired
+// 		fmt.Println(currentTick)
+// 	}
+// }
 
 func TestTimeWheel(t *testing.T) {
 	tw := NewTimeWheel(100*time.Millisecond, 10, 100)
@@ -26,5 +46,17 @@ func TestTimeWheel(t *testing.T) {
 		} else {
 			t.Logf("TestTimeWheel|SUCC|%d\n", i)
 		}
+	}
+}
+
+func BenchmarkTimeWheel(t *testing.B) {
+	tw := NewTimeWheel(100*time.Millisecond, 10, 100)
+
+	for i := 0; i < t.N; i++ {
+
+		timerId, _ := tw.After(3*time.Second, func() {
+
+		})
+		tw.Remove(timerId)
 	}
 }
