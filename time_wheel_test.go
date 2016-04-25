@@ -50,7 +50,7 @@ func TestTimeWheel(t *testing.T) {
 }
 
 func BenchmarkTimeWheel(t *testing.B) {
-	tw := NewTimeWheel(100*time.Millisecond, 10, 100)
+	tw := NewTimeWheel(1*time.Second, 10, 100)
 
 	for i := 0; i < t.N; i++ {
 
@@ -59,4 +59,17 @@ func BenchmarkTimeWheel(t *testing.B) {
 		})
 		tw.Remove(timerId)
 	}
+}
+
+func BenchmarkParalleTimeWheel(t *testing.B) {
+	tw := NewTimeWheel(1*time.Second, 10, 100)
+	t.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			timerId, _ := tw.After(3*time.Second, func() {
+
+			})
+			tw.Remove(timerId)
+		}
+	})
+
 }
