@@ -69,6 +69,10 @@ func NewBurstyLimiterWithTikcer(initPermits int, permitsPerSecond int, tw *TimeW
 	return &BurstyLimiter{permitsPerSecond: permitsPerSecond, limiter: ch}, nil
 }
 
+func (self *BurstyLimiter) PermitsPerSecond() int {
+	return self.permitsPerSecond
+}
+
 //try acquire token
 func (self *BurstyLimiter) TryAcquire(timeout chan bool) bool {
 	select {
@@ -78,6 +82,16 @@ func (self *BurstyLimiter) TryAcquire(timeout chan bool) bool {
 		return false
 	}
 	return false
+}
+
+//acquire token
+func (self *BurstyLimiter) Acquire() bool {
+	select {
+	case <-self.limiter:
+		return true
+	default:
+		return false
+	}
 }
 
 func (self *BurstyLimiter) Destroy() {

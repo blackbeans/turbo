@@ -1,7 +1,6 @@
 package pipe
 
 import (
-	"errors"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
@@ -10,7 +9,6 @@ import (
 
 //没有链接的分组直接失败
 var EMPTY_FUTURE = make(map[string]*turbo.Future, 0)
-var ERROR_NO_HOSTS = errors.New("NO VALID RemoteClient")
 
 //远程操作的remotinghandler
 
@@ -45,7 +43,7 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 
 	// log.Printf("RemotingHandler|Process|%s|%t\n", self.GetName(), revent)
 	var futures map[string]*turbo.Future
-	if len(revent.GroupIds) <= 0 && len(revent.TargetHost) <= 0 {
+	if len(revent.errFutures) <= 0 && len(revent.GroupIds) <= 0 && len(revent.TargetHost) <= 0 {
 		log.Warn("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%s|%s\n", self.GetName(), revent)
 		futures = EMPTY_FUTURE
 	} else {
@@ -87,7 +85,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo
 			} else {
 				//记为失败的下次需要重新发送
 				// log.Debug("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
-				futures[host] = turbo.NewErrFuture(-1, "no remoteclient", ERROR_NO_HOSTS)
+				futures[host] = turbo.NewErrFuture(-1, "no remoteclient", turbo.ERROR_NO_HOSTS)
 			}
 		}
 	}
@@ -118,11 +116,20 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo
 		}
 	}
 
+	//增加错误的future
+	if nil != event.errFutures {
+		for k, v := range event.errFutures {
+			// log.InfoLog("kite_handler", "%v----------%v---------------%v", k, v)
+			futures[k] = v
+
+		}
+	}
+
 	//统计哪些不在线的分组
 	for _, g := range event.GroupIds {
 		_, ok := futures[g]
 		if !ok {
-			futures[g] = turbo.NewErrFuture(-1, g, ERROR_NO_HOSTS)
+			futures[g] = turbo.NewErrFuture(-1, g, turbo.ERROR_NO_HOSTS)
 		}
 	}
 

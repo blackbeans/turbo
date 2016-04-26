@@ -49,9 +49,11 @@ func NewHeartbeatEvent(remoteClient *client.RemotingClient, opaque int32, versio
 type RemotingEvent struct {
 	Event      IForwardEvent
 	futures    chan map[string]*turbo.Future //所有的回调的future
+	errFutures map[string]*turbo.Future      //错误的回调future
 	TargetHost []string                      //发送的特定hostport
 	GroupIds   []string                      //本次发送的分组
 	Packet     *packet.Packet                //tlv的packet数据
+
 }
 
 func NewRemotingEvent(packet *packet.Packet, targetHost []string, groupIds ...string) *RemotingEvent {
@@ -65,6 +67,10 @@ func NewRemotingEvent(packet *packet.Packet, targetHost []string, groupIds ...st
 
 func (self *RemotingEvent) AttachEvent(Event IForwardEvent) {
 	self.Event = Event
+}
+
+func (self *RemotingEvent) AttachErrFutures(futures map[string]*turbo.Future) {
+	self.errFutures = futures
 }
 
 //等待响应

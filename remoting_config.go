@@ -16,6 +16,8 @@ const (
 )
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
+var ERROR_OVER_FLOW = errors.New("Group Over Flow")
+var ERROR_NO_HOSTS = errors.New("NO VALID RemoteClient")
 
 //-----------响应的future
 type Future struct {
