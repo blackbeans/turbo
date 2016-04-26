@@ -29,7 +29,7 @@ type Slot struct {
 type TimeWheel struct {
 	maxHash        uint32
 	autoId         int32
-	tick           *time.Ticker
+	tick           <-chan time.Time
 	wheel          []*Slot
 	hashWheel      map[uint32]*list.List
 	ticksPerwheel  int32
@@ -41,12 +41,19 @@ type TimeWheel struct {
 
 //超时时间及每个个timewheel所需要的tick数
 func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers int) *TimeWheel {
+	tick := time.NewTicker(tickPeriod)
+	return NewTimeWheelWithTicker(tick.C, tickPeriod, ticksPerwheel, slotJobWorkers)
+}
+
+//超时时间及每个个timewheel所需要的tick数
+func NewTimeWheelWithTicker(ticker <-chan time.Time, tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers int) *TimeWheel {
+
 	tw := &TimeWheel{
 		maxHash:        50 * 10000,
 		lock:           sync.RWMutex{},
 		tickPeriod:     tickPeriod,
 		hashWheel:      make(map[uint32]*list.List, 50*10000),
-		tick:           time.NewTicker(tickPeriod),
+		tick:           ticker,
 		slotJobWorkers: make(chan bool, slotJobWorkers),
 		wheel: func() []*Slot {
 			//ticksPerWheel make ticksPerWheel+1 slide
@@ -67,7 +74,7 @@ func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers in
 		// pre := time.Now()
 		for i := int32(0); ; i++ {
 			i = i % tw.ticksPerwheel
-			<-tw.tick.C
+			<-tw.tick
 			// fmt.Printf("-------------%d\n", t.Nanosecond()-pre.Nanosecond())
 			atomic.StoreInt32(&tw.currentTick, i)
 			tw.notifyExpired(i)

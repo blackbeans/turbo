@@ -46,7 +46,8 @@ func NewBurstyLimiterWithTikcer(initPermits int, permitsPerSecond int, tw *TimeW
 	pertick := int64(1*time.Second) / int64(permitsPerSecond)
 
 	if pertick < int64(tw.tickPeriod) {
-		return nil, errors.New(fmt.Sprintf("Ticker (%d) [1s/permitsPerSecond] Must be greater than %d ", pertick, tw.tickPeriod))
+		// return nil, errors.New(fmt.Sprintf("Ticker (%d) [1s/permitsPerSecond] Must be greater than %d ", pertick, tw.tickPeriod))
+		pertick = int64(tw.tickPeriod)
 	}
 
 	ch := make(chan time.Time, permitsPerSecond)
