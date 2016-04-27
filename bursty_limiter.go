@@ -84,6 +84,20 @@ func (self *BurstyLimiter) TryAcquire(timeout chan bool) bool {
 	return false
 }
 
+//try acquire token
+func (self *BurstyLimiter) TryAcquireWithCount(timeout chan bool, count int) int {
+	i := 0
+	for ; i < count; i++ {
+		select {
+		case <-self.limiter:
+		case <-timeout:
+			return i
+		}
+	}
+
+	return count
+}
+
 //acquire token
 func (self *BurstyLimiter) Acquire() bool {
 	select {

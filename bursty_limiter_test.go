@@ -26,12 +26,12 @@ func TestBurstyLimiter(t *testing.T) {
 
 func TestBurstyLimiterTw(t *testing.T) {
 	tw := NewTimeWheel(10*time.Microsecond, 10, 10)
-	limiter, _ := NewBurstyLimiterWithTikcer(0, 5000, tw)
+	limiter, _ := NewBurstyLimiterWithTikcer(0, 10000, tw)
 
 	ch := make(chan bool, 1)
 	start := time.Now()
 	// timeout := NewTimeWheel(1*time.Microsecond, 50, 10)
-	for i := 0; i < 5000; i++ {
+	for i := 0; i < 100000; i++ {
 		// id, ch := timeout.After(20*time.Millisecond, func() {})
 
 		succ := limiter.TryAcquire(ch)
@@ -42,7 +42,7 @@ func TestBurstyLimiterTw(t *testing.T) {
 		// fmt.Printf("PRE %d-------%v-----------%v\n", i, time.Now(), succ)
 	}
 
-	fmt.Println((time.Now().UnixNano() - start.UnixNano()) / 1000 / 1000 / 1000)
+	fmt.Println((time.Now().UnixNano() - start.UnixNano()))
 	limiter.Destroy()
 
 }
