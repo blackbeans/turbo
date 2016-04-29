@@ -9,10 +9,6 @@ import (
 	"time"
 )
 
-var channelPool = &sync.Pool{New: func() interface{} {
-	return make(chan bool, 1)
-}}
-
 type slotJob struct {
 	id  uint32
 	do  func()
@@ -163,7 +159,7 @@ func (self *TimeWheel) notifyExpired(idx int32) {
 						case <-job.ch:
 						default:
 						}
-						channelPool.Put(job.ch)
+						break
 					}
 				}
 			}
@@ -180,7 +176,7 @@ func (self *TimeWheel) After(timeout time.Duration, do func()) (int64, chan bool
 	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel-1)))
 	//fmt.Printf("After|TTL:%d|%d|%d|%d|%d\n", ttl, timeout, int64(self.tickPeriod), int64(self.ticksPerwheel-1), (int64(self.tickPeriod) * int64(self.ticksPerwheel-1)))
 	tid := self.timerId(sid)
-	ch := channelPool.Get().(chan bool)
+	ch := make(chan bool, 1)
 	job := &slotJob{tid, do, ttl, ch}
 
 	self.lock.Lock()

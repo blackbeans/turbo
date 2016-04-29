@@ -108,6 +108,12 @@ func (self *BurstyLimiter) Acquire() bool {
 	}
 }
 
+//return 1 : acquired
+//return 2 : total
+func (self *BurstyLimiter) LimiterInfo() (int, int) {
+	return self.permitsPerSecond - len(self.limiter), self.permitsPerSecond
+}
+
 func (self *BurstyLimiter) Destroy() {
 	if nil != self.ticker {
 		self.ticker.Stop()

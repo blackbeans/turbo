@@ -2,14 +2,9 @@ package turbo
 
 import (
 	"errors"
-	"sync"
 	"sync/atomic"
 	"time"
 )
-
-var futureChanPool = &sync.Pool{New: func() interface{} {
-	return make(chan interface{}, 1)
-}}
 
 const (
 	CONCURRENT_LEVEL = 8
@@ -25,53 +20,38 @@ type Future struct {
 	response   chan interface{}
 	TargetHost string
 	Err        error
-	valid      bool
 }
 
 func NewFuture(opaque int32, TargetHost string) *Future {
 
 	return &Future{
 		opaque,
-		futureChanPool.Get().(chan interface{}),
+		make(chan interface{}, 1),
 		TargetHost,
-		nil,
-		true}
+		nil}
 }
 
 //创建有错误的future
 func NewErrFuture(opaque int32, TargetHost string, err error) *Future {
 	return &Future{
 		opaque,
-		futureChanPool.Get().(chan interface{}),
+		make(chan interface{}, 1),
 		TargetHost,
-		err,
-		true}
+		err}
 }
 
 func (self Future) Error(err error) {
 	self.Err = err
-	if self.valid {
-		self.response <- err
-	}
+	self.response <- err
 }
 
 func (self Future) SetResponse(resp interface{}) {
-	if self.valid {
-		self.response <- resp
-	}
+	self.response <- resp
+
 }
 
 func (self Future) Get(timeout chan bool) (interface{}, error) {
 	//强制设置
-	defer func() {
-		//后收前释放赶紧这个channel
-		select {
-		case <-self.response:
-		default:
-		}
-		futureChanPool.Put(self.response)
-	}()
-
 	if nil != self.Err {
 		return nil, self.Err
 	}
@@ -89,8 +69,7 @@ func (self Future) Get(timeout chan bool) (interface{}, error) {
 				return nil, TIMEOUT_ERROR
 			}
 		}
-		//标记为过期不允许设置response
-		self.valid = false
+
 		//如果是因为本次超时引起的则直接返回超时
 		return nil, TIMEOUT_ERROR
 
