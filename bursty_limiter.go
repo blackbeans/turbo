@@ -19,7 +19,6 @@ func NewBurstyLimiter(initPermits int, permitsPerSecond int) (*BurstyLimiter, er
 			errors.New(fmt.Sprintf("BurstyLimiter initPermits[%d]<=permitsPerSecond[%d]", initPermits, permitsPerSecond))
 	}
 	pertick := int64(1*time.Second) / int64(permitsPerSecond)
-
 	if pertick <= 0 {
 		return nil,
 			errors.New(fmt.Sprintf("BurstyLimiter int64(1*time.Second)< permitsPerSecond[%d]", permitsPerSecond))
@@ -32,8 +31,17 @@ func NewBurstyLimiter(initPermits int, permitsPerSecond int) (*BurstyLimiter, er
 	}
 	//insert token
 	go func() {
+		last := time.Now().UnixNano()
+		unit := int64(1 * time.Second)
 		for t := range tick.C {
-			ch <- t
+			//calculate delay nano
+			cost := (t.UnixNano() - last) % unit
+			last = t.UnixNano()
+			//calculate delay flow count
+			delayCount := int(cost / pertick)
+			for ; delayCount > 0; delayCount-- {
+				ch <- t
+			}
 		}
 	}()
 
@@ -57,12 +65,23 @@ func NewBurstyLimiterWithTikcer(initPermits int, permitsPerSecond int, tw *TimeW
 
 	//insert token
 	go func() {
+
+		last := time.Now().UnixNano()
+		unit := int64(1 * time.Second)
 		for {
 			//registry
 			_, timeout := tw.After(time.Duration(pertick), func() {})
-
 			<-timeout
-			ch <- time.Now()
+			t := time.Now()
+			//calculate delay nano
+			cost := (t.UnixNano() - last) % unit
+			last = t.UnixNano()
+			//calculate delay flow count
+			delayCount := int(cost / pertick)
+			for ; delayCount > 0; delayCount-- {
+				ch <- t
+			}
+
 		}
 	}()
 
@@ -100,10 +119,12 @@ func (self *BurstyLimiter) TryAcquireWithCount(timeout chan bool, count int) int
 
 //acquire token
 func (self *BurstyLimiter) Acquire() bool {
-	select {
-	case <-self.limiter:
-		return true
-	default:
+	if len(self.limiter) > 0 {
+		select {
+		case <-self.limiter:
+			return true
+		}
+	} else {
 		return false
 	}
 }
