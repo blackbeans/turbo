@@ -77,7 +77,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo
 			if nil != rclient && !rclient.IsClosed() {
 				//写到响应的channel中
 				tmp := *p.NewPacket(packet.Header.CmdType, packet.Data)
-				f, err := rclient.Write(*tmp)
+				f, err := rclient.Write(tmp)
 				if nil != err {
 					futures[host] = turbo.NewErrFuture(-1, rclient.RemoteAddr(), err)
 				} else {
