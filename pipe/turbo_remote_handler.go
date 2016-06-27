@@ -4,6 +4,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
+	p "github.com/blackbeans/turbo/packet"
 	"math/rand"
 )
 
@@ -75,7 +76,8 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo
 			rclient := self.clientManager.FindRemoteClient(host)
 			if nil != rclient && !rclient.IsClosed() {
 				//写到响应的channel中
-				f, err := rclient.Write(packet)
+				tmp := *p.NewPacket(packet.Header.CmdType, packet.Data)
+				f, err := rclient.Write(*tmp)
 				if nil != err {
 					futures[host] = turbo.NewErrFuture(-1, rclient.RemoteAddr(), err)
 				} else {
@@ -106,7 +108,9 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*turbo
 			}
 			idx := rand.Intn(len(c))
 			//克隆一份
-			f, err := c[idx].Write(packet)
+			tmp := *p.NewPacket(packet.Header.CmdType, packet.Data)
+
+			f, err := c[idx].Write(tmp)
 			if nil != err {
 				futures[gid] = turbo.NewErrFuture(-1, c[idx].RemoteAddr(), err)
 			} else {
