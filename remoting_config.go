@@ -58,8 +58,13 @@ func (self Future) Get(timeout <-chan time.Time) (interface{}, error) {
 
 	select {
 	case <-timeout:
-		//如果是因为本次超时引起的则直接返回超时
-		return nil, TIMEOUT_ERROR
+		select {
+		case resp := <-self.response:
+			return resp, nil
+		default:
+			//如果是已经超时了但是当前还是没有响应也认为超时
+			return nil, TIMEOUT_ERROR
+		}
 
 	case resp := <-self.response:
 		e, ok := resp.(error)
