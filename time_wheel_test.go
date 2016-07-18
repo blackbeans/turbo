@@ -8,23 +8,6 @@ import (
 	"time"
 )
 
-// func TestTimeWheelCheck(t *testing.T) {
-// 	currentTick := int32(0)
-// 	tick := time.NewTicker(1 * time.Second)
-// 	var lock sync.Mutex
-// 	for i := 0; ; i++ {
-// 		i = i % 10
-// 		<-tick.C
-// 		lock.Lock()
-// 		atomic.StoreInt32(&currentTick, int32(i))
-// 		lock.Unlock()
-// 		// tw.currentTick = i
-// 		// tw.lock.Unlock()
-// 		//notify expired
-// 		fmt.Println(currentTick)
-// 	}
-// }
-
 func TestTimeWheel(t *testing.T) {
 	tw := NewTimeWheel(100*time.Millisecond, 10, 100)
 
