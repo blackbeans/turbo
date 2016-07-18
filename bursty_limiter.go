@@ -2,11 +2,14 @@ package turbo
 
 import (
 	"golang.org/x/time/rate"
+	"sync/atomic"
 	"time"
 )
 
 type BurstyLimiter struct {
-	rateLimiter *rate.Limiter
+	rateLimiter   *rate.Limiter
+	allowCount    int64
+	preAllowCount int64
 }
 
 func NewBurstyLimiter(initPermits int, permitsPerSecond int) (*BurstyLimiter, error) {
@@ -22,18 +25,30 @@ func (self *BurstyLimiter) PermitsPerSecond() int {
 
 //try acquire token
 func (self *BurstyLimiter) AcquireCount(count int) bool {
-	return self.rateLimiter.AllowN(time.Now(), count)
+	succ := self.rateLimiter.AllowN(time.Now(), count)
+	if succ {
+		atomic.AddInt64(&self.allowCount, int64(count))
+	}
+	return succ
 }
 
 //acquire token
 func (self *BurstyLimiter) Acquire() bool {
-	return self.rateLimiter.Allow()
+	succ := self.rateLimiter.Allow()
+	if succ {
+		atomic.AddInt64(&self.allowCount, 1)
+	}
+	return succ
 }
 
 //return 1 : acquired
 //return 2 : total
 func (self *BurstyLimiter) LimiterInfo() (int, int) {
-	return int(self.rateLimiter.Limit()) - self.rateLimiter.Burst(), int(self.rateLimiter.Limit())
+	tmp := atomic.LoadInt64(&self.allowCount)
+	change := int(tmp - self.preAllowCount)
+	self.preAllowCount = tmp
+
+	return change, int(self.rateLimiter.Limit())
 }
 
 func (self *BurstyLimiter) Destroy() {
