@@ -222,7 +222,7 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 					//如果当前时间和授权时间差与warmingup需要的时间几率按照100%计算的比例
 					//小于等于随机100出来的数据那么久可以选取
 					rate := int((time.Now().Unix() - c.AuthSecond) * 100 / int64(auth.WarmingupSec))
-					if rand.Intn(100) > rate {
+					if rate < 100 && rand.Intn(100) > rate {
 						continue
 					}
 				}
