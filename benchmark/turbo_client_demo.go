@@ -1,15 +1,16 @@
 package main
 
 import (
-	"github.com/blackbeans/turbo"
-	"github.com/blackbeans/turbo/client"
-	"github.com/blackbeans/turbo/codec"
-	"github.com/blackbeans/turbo/packet"
 	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
+
+	"github.com/blackbeans/turbo"
+	"github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/codec"
+	"github.com/blackbeans/turbo/packet"
 )
 
 func clientPacketDispatcher(rclient *client.RemotingClient, resp *packet.Packet) {
@@ -86,7 +87,6 @@ func main() {
 	for i := 0; i < 100; i++ {
 		go func() {
 			for {
-
 				//write command and wait for response
 				_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
 				if nil != err {

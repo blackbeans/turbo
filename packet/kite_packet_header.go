@@ -15,11 +15,9 @@ type PacketHeader struct {
 }
 
 func MarshalHeader(header PacketHeader, bodyLen int32) *bytes.Buffer {
-	b := make([]byte, 0, 4+PACKET_HEAD_LEN+bodyLen)
+	b := make([]byte, 0, PACKET_HEAD_LEN+bodyLen)
 	buff := bytes.NewBuffer(b)
 	//写入包头长度
-
-	Write(buff, binary.BigEndian, int32(PACKET_HEAD_LEN+bodyLen))
 	Write(buff, binary.BigEndian, header.Opaque)
 	Write(buff, binary.BigEndian, header.CmdType)
 	Write(buff, binary.BigEndian, header.Version)

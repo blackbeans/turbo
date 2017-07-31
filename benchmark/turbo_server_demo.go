@@ -12,11 +12,11 @@ import (
 )
 
 func packetDispatcher(rclient *client.RemotingClient, p *packet.Packet) {
-
+	// log.Printf("packetDispatcher|WriteResponse|%s\n", string(p.Data))
 	resp := packet.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
 	//直接回写回去
 	rclient.Write(*resp)
-	// log.Printf("packetDispatcher|WriteResponse|%s\n", string(resp.Data))
+
 }
 
 func main() {
