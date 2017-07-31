@@ -104,6 +104,7 @@ func (self *Session) ReadPacket() {
 
 			p := packet.Packet{Header: head, Data: body}
 			packetWithPayLoad, err := self.frameCodec.UnmarshalPacket(p)
+
 			if nil != err {
 				log.Error("Session|UnmarshalPacket|%s|FAIL|CLOSE SESSION|%s|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
 				return nil
@@ -168,8 +169,8 @@ func (self *Session) Write(p *packet.Packet) error {
 func (self *Session) write0(tlv []*packet.Packet) {
 	batch := make([]byte, 0, len(tlv)*128)
 	for _, t := range tlv {
-		p := self.frameCodec.MarshalPacket(*t)
-		if nil == p || len(p) <= 0 {
+		p, err := self.frameCodec.MarshalPacket(*t)
+		if nil != err || nil == p || len(p) <= 0 {
 			log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", t)
 			//如果是同步写出
 			continue

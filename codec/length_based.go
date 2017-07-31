@@ -7,7 +7,7 @@ type ICodec interface {
 	//包装秤packet
 	UnmarshalPacket(p packet.Packet) (*packet.Packet, error)
 	//序列化packet
-	MarshalPacket(p packet.Packet) []byte
+	MarshalPacket(p packet.Packet) ([]byte, error)
 }
 
 type LengthBasedCodec struct {
@@ -22,7 +22,7 @@ func (self LengthBasedCodec) UnmarshalPacket(p packet.Packet) (*packet.Packet, e
 }
 
 //序列化
-func (self LengthBasedCodec) MarshalPacket(packet packet.Packet) []byte {
+func (self LengthBasedCodec) MarshalPacket(packet packet.Packet) ([]byte, error) {
 	rawData := packet.Marshal()
-	return rawData
+	return rawData, nil
 }
