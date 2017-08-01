@@ -7,10 +7,6 @@ import (
 
 type Compress int8
 
-const (
-	COMPRESS_SNAPPY = 0x01 //snappy算法
-)
-
 //packet的包头部分
 type PacketHeader struct {
 	Opaque    int32 //请求的seqId
