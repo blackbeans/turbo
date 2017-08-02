@@ -134,7 +134,7 @@ func (self *Session) read0(br *bufio.Reader, len int) ([]byte, error) {
 			log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
 			return nil, err
 		}
-		if l != cap(buff) {
+		if idx < cap(buff) {
 			idx += l
 		} else {
 			//read full
