@@ -96,7 +96,7 @@ func NewTimerWheel(interval time.Duration, workSize int) *TimerWheel {
 		workLimit:   make(chan *interface{}, workSize),
 	}
 	heap.Init(&tw.timerHeap)
-	go tw.start()
+	tw.start()
 	return tw
 }
 
