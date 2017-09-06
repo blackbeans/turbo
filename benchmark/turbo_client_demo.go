@@ -84,22 +84,22 @@ func main() {
 		return false
 	})
 
-	for i := 0; i < 100; i++ {
-		go func() {
-			for {
-				//write command and wait for response
-				_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
-				if nil != err {
-					log.Printf("WAIT RESPONSE FAIL|%s\n", err)
-					break
-				} else {
-					// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
-				}
+	// for i := 0; i < 100; i++ {
+	// 	go func() {
+	for {
+		//write command and wait for response
+		_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
+		if nil != err {
+			log.Printf("WAIT RESPONSE FAIL|%s\n", err)
+			break
+		} else {
+			// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
+		}
 
-			}
-		}()
 	}
+	// }()
+	// }
 
-	select {}
+	// select {}
 
 }
