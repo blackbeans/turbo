@@ -10,12 +10,15 @@ type OnEvent func(t time.Time)
 
 //一个timer任务
 type Timer struct {
-	timerId int64
-	Index   int
-	expired time.Time
+	timerId  int64
+	Index    int
+	expired  time.Time
+	interval time.Duration
 	//回调函数
 	onTimeout OnEvent
 	onCancel  OnEvent
+	//是否重复过期
+	repeated bool
 }
 
 type TimerHeap []*Timer
@@ -86,7 +89,7 @@ func NewTimerWheel(interval time.Duration, workSize int) *TimerWheel {
 	}
 
 	tw := &TimerWheel{
-		timerHeap:   make(TimerHeap, 0, 10),
+		timerHeap:   make(TimerHeap, 0),
 		tick:        time.NewTicker(interval),
 		hashTimer:   make(map[int64]*Timer, 10),
 		interval:    interval,
@@ -110,6 +113,26 @@ func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
 
 	self.addTimer <- t
 	return t.timerId, ch
+}
+
+//周期性的timer
+func (self *TimerWheel) RepeatedTimer(interval time.Duration,
+	onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
+	ch := make(chan time.Time, 1)
+	t := &Timer{
+		repeated: true,
+		interval: interval,
+		timerId:  timerId(),
+		expired:  time.Now().Add(interval),
+		onTimeout: func(t time.Time) {
+			ch <- t
+			onTimout(t)
+		},
+		onCancel: onCancel}
+
+	self.addTimer <- t
+	return t.timerId, ch
+
 }
 
 func (self *TimerWheel) AddTimer(timeout time.Duration, onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
@@ -155,6 +178,12 @@ func (self *TimerWheel) checkExpired(now time.Time) {
 					<-self.workLimit
 					t.onTimeout(now)
 				}()
+				//如果是需要repeat的那么继续放回去
+				t.expired = now.Add(t.interval)
+				if time.Since(t.expired).Seconds() > 10 {
+					t.expired = time.Now()
+				}
+				heap.Push(&self.timerHeap, t)
 			}
 		} else {
 			//没有过期那么久放回去
