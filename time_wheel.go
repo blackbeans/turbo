@@ -178,12 +178,15 @@ func (self *TimerWheel) checkExpired(now time.Time) {
 					<-self.workLimit
 					t.onTimeout(now)
 				}()
-				//如果是需要repeat的那么继续放回去
-				t.expired = now.Add(t.interval)
-				if time.Since(t.expired).Seconds() > 10 {
-					t.expired = time.Now()
+				//如果是repeated的那么就检查并且重置过期时间
+				if t.repeated {
+					//如果是需要repeat的那么继续放回去
+					t.expired = now.Add(t.interval)
+					if time.Since(t.expired).Seconds() > 10 {
+						t.expired = time.Now()
+					}
+					heap.Push(&self.timerHeap, t)
 				}
-				heap.Push(&self.timerHeap, t)
 			}
 		} else {
 			//没有过期那么久放回去
