@@ -92,7 +92,7 @@ func (self *Session) ReadPacket() {
 
 			if head.BodyLen > packet.MAX_PACKET_BYTES {
 				log.Error("Session|UnmarshalHeader|%s|Too Large Packet|CLOSE SESSION|%v", self.remoteAddr, head.BodyLen)
-				return err
+				return packet.ERR_TOO_LARGE_PACKET
 			}
 
 			//读取body
@@ -170,6 +170,14 @@ func (self *Session) write0(tlv []*packet.Packet) {
 		if nil != err || nil == p || len(p) <= 0 {
 			log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", t)
 			//如果是同步写出
+			continue
+		}
+
+		//如果大小超过了最大值那么久写入失败
+		if t.Header.BodyLen > packet.MAX_PACKET_BYTES {
+			if nil != t.OnComplete {
+				t.OnComplete(packet.ERR_TOO_LARGE_PACKET)
+			}
 			continue
 		}
 		batch = append(batch, p...)

@@ -185,6 +185,12 @@ func (self *RemotingClient) Write(p packet.Packet) (*turbo.Future, error) {
 	opaque := self.fillOpaque(pp)
 	future := turbo.NewFuture(opaque, self.localAddr)
 	self.rc.RequestHolder.Attach(opaque, future)
+	//写入完成之后的操作
+	pp.OnComplete = func(err error) {
+		if nil != err {
+			future.Err(err)
+		}
+	}
 	return future, self.remoteSession.Write(pp)
 }
 
@@ -197,7 +203,14 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 
 	future := turbo.NewFuture(opaque, self.localAddr)
 	self.rc.RequestHolder.Attach(opaque, future)
+	//写入完成之后的操作
+	pp.OnComplete = func(err error) {
+		if nil != err {
+			future.Err(err)
+		}
+	}
 	err := self.remoteSession.Write(pp)
+
 	// //同步写出
 	if nil != err {
 		return nil, err

@@ -5,6 +5,8 @@ type Packet struct {
 	Header  PacketHeader
 	Data    []byte
 	PayLoad interface{}
+	//packet的回调
+	OnComplete func(err bool)
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
