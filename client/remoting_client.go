@@ -188,7 +188,7 @@ func (self *RemotingClient) Write(p packet.Packet) (*turbo.Future, error) {
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
 		if nil != err {
-			future.Err(err)
+			future.Error(err)
 		}
 	}
 	return future, self.remoteSession.Write(pp)
@@ -206,7 +206,7 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
 		if nil != err {
-			future.Err(err)
+			future.Error(err)
 		}
 	}
 	err := self.remoteSession.Write(pp)
