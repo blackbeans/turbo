@@ -2,9 +2,35 @@ package turbo
 
 import "testing"
 import "time"
+import "fmt"
 
-var tw *TimerWheel = NewTimerWheel(200*time.Millisecond, 10)
+var tw *TimerWheel = NewTimerWheel(200*time.Millisecond, 1000)
 
+func TestHeap(t *testing.T) {
+	tw.RepeatedTimer(10*time.Second, func(now time.Time) {
+		fmt.Printf("T1:%d\n", now.Unix())
+	}, nil)
+
+	tw.RepeatedTimer(10*time.Second, func(now time.Time) {
+		fmt.Printf("T2:%d\n", now.Unix())
+	}, nil)
+
+	time.Sleep(60 * time.Second)
+}
+
+func TestRepeated(t *testing.T) {
+	ch := make(chan time.Time, 10)
+	tw.RepeatedTimer(10*time.Second, func(now time.Time) {
+		ch <- now
+		time.Sleep(50 * time.Second)
+	}, nil)
+
+	for {
+		now := <-ch
+		fmt.Printf("timeout :%d\n", now.Unix())
+	}
+
+}
 func TestTimeWheel(t *testing.T) {
 
 	id, ch := tw.After(5 * time.Second)

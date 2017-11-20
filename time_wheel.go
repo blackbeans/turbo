@@ -23,16 +23,14 @@ type Timer struct {
 
 type TimerHeap []*Timer
 
-// A PriorityQueue implements heap.Interface and holds Items.
 func (h TimerHeap) Len() int { return len(h) }
 
 func (h TimerHeap) Less(i, j int) bool {
-	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
-	if h[i].expired.Before(h[j].expired) {
+	if h[i].expired.After(h[j].expired) {
 		return true
 	}
 
-	if h[i].timerId < h[i].timerId {
+	if h[i].timerId > h[i].timerId {
 		return true
 	}
 	return false
@@ -167,24 +165,32 @@ func (self *TimerWheel) checkExpired(now time.Time) {
 		t := self.timerHeap.Pop().(*Timer)
 		//如果过期时间再当前tick之前则超时
 		//或者当前时间和过期时间的差距在一个Interval周期内那么就认为过期的
-		cost := now.UnixNano() - t.expired.UnixNano()
-		if t.expired.Before(now) ||
-			(cost > 0 && cost < int64(self.interval)) {
+		cost := now.Sub(t.expired).Seconds()
+
+		if cost >= 0 {
 			if nil != t.onTimeout {
 				self.workLimit <- nil
 				go func() {
-					<-self.workLimit
+					defer func() {
+						<-self.workLimit
+					}()
 					t.onTimeout(now)
+
 				}()
+
 				//如果是repeated的那么就检查并且重置过期时间
 				if t.repeated {
 					//如果是需要repeat的那么继续放回去
-					t.expired = now.Add(t.interval)
-					if time.Since(t.expired).Seconds() > 10 {
-						t.expired = time.Now()
+					t.expired = t.expired.Add(t.interval)
+					if time.Since(t.expired).Nanoseconds()/int64(t.interval) >= 1 {
+						t.expired = time.Now().Add(t.interval)
 					}
 					heap.Push(&self.timerHeap, t)
+				} else {
+					delete(self.hashTimer, t.timerId)
 				}
+			} else {
+				delete(self.hashTimer, t.timerId)
 			}
 		} else {
 			//没有过期那么久放回去
@@ -205,7 +211,9 @@ func (self *TimerWheel) start() {
 			case updateT := <-self.updateTimer:
 				if t, ok := self.hashTimer[updateT.timerId]; ok {
 					t.expired = updateT.expired
+					heap.Fix(&self.timerHeap, t.Index)
 				}
+
 			case t := <-self.addTimer:
 				heap.Push(&self.timerHeap, t)
 				self.hashTimer[t.timerId] = t
@@ -213,7 +221,6 @@ func (self *TimerWheel) start() {
 				if t, ok := self.hashTimer[timerid]; ok {
 					delete(self.hashTimer, timerid)
 					heap.Remove(&self.timerHeap, t.Index)
-
 					if nil != t.onCancel {
 						self.workLimit <- nil
 						go func() {
