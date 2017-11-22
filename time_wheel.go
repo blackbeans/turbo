@@ -26,14 +26,14 @@ type TimerHeap []*Timer
 func (h TimerHeap) Len() int { return len(h) }
 
 func (h TimerHeap) Less(i, j int) bool {
-	if h[i].expired.After(h[j].expired) {
+	if h[i].expired.Before(h[j].expired) {
 		return true
 	}
 
-	if h[i].timerId > h[i].timerId {
-		return true
+	if h[i].expired.Before(h[j].expired) {
+		return false
 	}
-	return false
+	return h[i].timerId < h[j].timerId
 }
 
 func (h TimerHeap) Swap(i, j int) {
@@ -102,6 +102,9 @@ func NewTimerWheel(interval time.Duration, workSize int) *TimerWheel {
 }
 
 func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
+	if timeout < self.interval {
+		timeout = self.interval
+	}
 	ch := make(chan time.Time, 1)
 	t := &Timer{
 		timerId:   timerId(),
@@ -115,7 +118,10 @@ func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
 
 //周期性的timer
 func (self *TimerWheel) RepeatedTimer(interval time.Duration,
-	onTimout OnEvent, onCancel OnEvent) int64 {
+	onTimout OnEvent, onCancel OnEvent) {
+	if interval < self.interval {
+		interval = self.interval
+	}
 	t := &Timer{
 		repeated: true,
 		interval: interval,
@@ -127,17 +133,18 @@ func (self *TimerWheel) RepeatedTimer(interval time.Duration,
 		onCancel: onCancel}
 
 	self.addTimer <- t
-	return t.timerId
-
 }
 
 func (self *TimerWheel) AddTimer(timeout time.Duration, onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
 	ch := make(chan time.Time, 1)
 	t := &Timer{
-		timerId: timerId(),
-		expired: time.Now().Add(timeout),
+		timerId:  timerId(),
+		interval: timeout,
+		expired:  time.Now().Add(timeout),
 		onTimeout: func(t time.Time) {
-			ch <- t
+			defer func() {
+				ch <- t
+			}()
 			onTimout(t)
 		},
 		onCancel: onCancel}
@@ -160,43 +167,44 @@ func (self *TimerWheel) CancelTimer(timerid int64) {
 }
 
 func (self *TimerWheel) checkExpired(now time.Time) {
-	for self.timerHeap.Len() > 0 {
+	for {
+		if self.timerHeap.Len() <= 0 {
+			break
+		}
 
-		t := self.timerHeap.Pop().(*Timer)
+		expired := self.timerHeap[0].expired
 		//如果过期时间再当前tick之前则超时
 		//或者当前时间和过期时间的差距在一个Interval周期内那么就认为过期的
-		cost := now.Sub(t.expired).Seconds()
-
-		if cost >= 0 {
-			if nil != t.onTimeout {
-				self.workLimit <- nil
-				go func() {
-					defer func() {
-						<-self.workLimit
-					}()
-					t.onTimeout(now)
-
+		if expired.After(now) {
+			break
+		}
+		t := heap.Pop(&self.timerHeap).(*Timer)
+		if nil != t.onTimeout {
+			self.workLimit <- nil
+			go func() {
+				defer func() {
+					<-self.workLimit
 				}()
+				t.onTimeout(now)
 
-				//如果是repeated的那么就检查并且重置过期时间
-				if t.repeated {
-					//如果是需要repeat的那么继续放回去
-					t.expired = t.expired.Add(t.interval)
-					if time.Since(t.expired).Nanoseconds()/int64(t.interval) >= 1 {
-						t.expired = time.Now().Add(t.interval)
-					}
-					heap.Push(&self.timerHeap, t)
-				} else {
-					delete(self.hashTimer, t.timerId)
+			}()
+
+			//如果是repeated的那么就检查并且重置过期时间
+			if t.repeated {
+				//如果是需要repeat的那么继续放回去
+				t.expired = t.expired.Add(t.interval)
+				if !t.expired.After(now) {
+					t.expired = now.Add(t.interval)
 				}
+				t.timerId = timerId()
+				heap.Push(&self.timerHeap, t)
 			} else {
 				delete(self.hashTimer, t.timerId)
 			}
 		} else {
-			//没有过期那么久放回去
-			heap.Push(&self.timerHeap, t)
-			break
+			delete(self.hashTimer, t.timerId)
 		}
+
 	}
 }
 
