@@ -103,13 +103,13 @@ func (self *Session) ReadPacket() {
 			}
 
 			p := packet.Packet{Header: head, Data: body}
-			packetWithPayLoad, err := self.frameCodec.UnmarshalPacket(p)
+			message, err := self.frameCodec.UnmarshalPacket(p)
 			if nil != err {
 				log.WarnLog("Session|UnmarshalPacket|%s|FAIL|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
 				return nil
 			}
 			//写入缓冲
-			self.ReadChannel <- packetWithPayLoad
+			self.ReadChannel <- message
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 				self.rc.FlowStat.ReadBytesFlow.Incr(packet.PACKET_HEAD_LEN + head.BodyLen)

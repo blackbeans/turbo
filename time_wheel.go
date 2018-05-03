@@ -30,7 +30,7 @@ func (h TimerHeap) Less(i, j int) bool {
 		return true
 	}
 
-	if h[i].expired.Before(h[j].expired) {
+	if h[i].expired.After(h[j].expired) {
 		return false
 	}
 	return h[i].timerId < h[j].timerId

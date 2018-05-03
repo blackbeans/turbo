@@ -18,7 +18,7 @@ func clientPacketDispatcher(rclient *client.RemotingClient, resp *packet.Packet)
 	rclient.Attach(resp.Header.Opaque, resp.Data)
 }
 
-func packetDispatcher(rclient *client.RemotingClient, p *packet.Packet) {
+func onMessage(rclient *client.RemotingClient, p *packet.Packet) {
 	resp := packet.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
 	//直接回写回去
 	rclient.Write(*resp)
@@ -37,7 +37,7 @@ func BenchmarkRemoteClient(t *testing.B) {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	remoteServer := NewRemotionServer("localhost:28888", rc, packetDispatcher)
+	remoteServer := NewRemotionServer("localhost:28888", rc, onMessage)
 	remoteServer.ListenAndServer()
 
 	conn, _ := dial("localhost:28888")

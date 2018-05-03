@@ -11,28 +11,28 @@ import (
 )
 
 type RemotingServer struct {
-	hostport         string
-	keepalive        time.Duration
-	stopChan         chan bool
-	isShutdown       bool
-	packetDispatcher func(remoteClient *client.RemotingClient, p *packet.Packet)
-	rc               *turbo.RemotingConfig
-	codecFunc        func() codec.ICodec
+	hostport   string
+	keepalive  time.Duration
+	stopChan   chan bool
+	isShutdown bool
+	onMessage  func(remoteClient *client.RemotingClient, p *packet.Packet)
+	rc         *turbo.RemotingConfig
+	codecFunc  func() codec.ICodec
 }
 
 func NewRemotionServer(hostport string, rc *turbo.RemotingConfig,
-	packetDispatcher func(remoteClient *client.RemotingClient, p *packet.Packet)) *RemotingServer {
+	onMessage func(remoteClient *client.RemotingClient, p *packet.Packet)) *RemotingServer {
 
 	//设置为8个并发
 	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 
 	server := &RemotingServer{
-		hostport:         hostport,
-		stopChan:         make(chan bool, 1),
-		packetDispatcher: packetDispatcher,
-		isShutdown:       false,
-		rc:               rc,
-		keepalive:        5 * time.Minute,
+		hostport:   hostport,
+		stopChan:   make(chan bool, 1),
+		onMessage:  onMessage,
+		isShutdown: false,
+		rc:         rc,
+		keepalive:  5 * time.Minute,
 		codecFunc: func() codec.ICodec {
 			return codec.LengthBasedCodec{
 				MaxFrameLength: packet.MAX_PACKET_BYTES,
@@ -49,13 +49,13 @@ func NewRemotionServerWithCodec(hostport string, rc *turbo.RemotingConfig, codec
 	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 
 	server := &RemotingServer{
-		hostport:         hostport,
-		stopChan:         make(chan bool, 1),
-		packetDispatcher: packetDispatcher,
-		isShutdown:       false,
-		rc:               rc,
-		keepalive:        5 * time.Minute,
-		codecFunc:        codecFunc}
+		hostport:   hostport,
+		stopChan:   make(chan bool, 1),
+		onMessage:  packetDispatcher,
+		isShutdown: false,
+		rc:         rc,
+		keepalive:  5 * time.Minute,
+		codecFunc:  codecFunc}
 	return server
 }
 
@@ -97,7 +97,7 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 			// log.Debug("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
 
-			remoteClient := client.NewRemotingClient(conn, self.codecFunc, self.packetDispatcher, self.rc)
+			remoteClient := client.NewRemotingClient(conn, self.codecFunc, self.onMessage, self.rc)
 			remoteClient.Start()
 		}
 	}
