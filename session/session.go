@@ -168,7 +168,10 @@ func (self *Session) write0(tlv []*packet.Packet) {
 	for _, t := range tlv {
 		p, err := self.frameCodec.MarshalPacket(*t)
 		if nil != err || nil == p || len(p) <= 0 {
-			log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", t)
+			log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s|%v", t,err)
+			if nil != t.OnComplete {
+				t.OnComplete(err)
+			}
 			//如果是同步写出
 			continue
 		}
