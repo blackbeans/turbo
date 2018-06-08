@@ -188,6 +188,7 @@ func (self *RemotingClient) Write(p packet.Packet) (*turbo.Future, error) {
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
 		if nil != err {
+			log.Error("RemotingClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err,string(pp.Data))
 			future.Error(err)
 		}
 	}
