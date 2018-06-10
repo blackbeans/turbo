@@ -1,22 +1,19 @@
 package main
 
 import (
-	"github.com/blackbeans/turbo"
-	"github.com/blackbeans/turbo/client"
-	"github.com/blackbeans/turbo/packet"
-	"github.com/blackbeans/turbo/server"
-	// "log"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
+	"turbo"
 )
 
-func packetDispatcher(rclient *client.RemotingClient, p *packet.Packet) {
+func handle(ctx *turbo.TContext) error{
 	// log.Printf("packetDispatcher|WriteResponse|%s\n", string(p.Data))
-	resp := packet.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
+	p := ctx.Message
+	resp := turbo.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
 	//直接回写回去
-	rclient.Write(*resp)
-
+	ctx.Client.Write(*resp)
+	return nil
 }
 
 func main() {
@@ -26,13 +23,13 @@ func main() {
 
 	}()
 
-	rc := turbo.NewRemotingConfig(
+	rc := turbo.NewTConfig(
 		"turbo-server:localhost:28888",
 		1000, 16*1024,
 		16*1024, 20000, 20000,
 		10*time.Second, 160000)
 
-	remoteServer := server.NewRemotionServer("localhost:28888", rc, packetDispatcher)
+	remoteServer := turbo.NewTServer("localhost:28888", rc, handle)
 	remoteServer.ListenAndServer()
 	select {}
 }

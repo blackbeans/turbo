@@ -1,9 +1,10 @@
-package packet
+package turbo
 
 import (
 	"bytes"
 	"encoding/binary"
 )
+
 
 
 type Compress int8
@@ -95,4 +96,18 @@ func (self *Packet) Marshal() []byte {
 	buff := MarshalHeader(self.Header, int32(dl))
 	buff.Write(self.Data)
 	return buff.Bytes()
+}
+
+
+// TContext 处理的上下文
+
+//处理器
+type THandler func(ctx *TContext) error
+
+//接受消息
+type IOHandler func(message Packet,err error)
+
+type TContext struct{
+	Client *TClient
+	Message *Packet
 }

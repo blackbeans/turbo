@@ -7,18 +7,17 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/blackbeans/turbo"
-	"github.com/blackbeans/turbo/client"
-	"github.com/blackbeans/turbo/codec"
-	"github.com/blackbeans/turbo/packet"
+	"turbo"
 )
 
-func clientPacketDispatcher(rclient *client.RemotingClient, resp *packet.Packet) {
-	rclient.Attach(resp.Header.Opaque, resp.Data)
-	// log.Printf("clientPacketDispatcher|%s\n", string(resp.Data))
+func onMessage(ctx *turbo.TContext) error {
+	resp := ctx.Message
+	ctx.Client.Attach(resp.Header.Opaque, resp.Data)
+	// log.Printf("onMessage|%s\n", string(resp.Data))
+	return nil
 }
 
-func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool, error) {
+func handshake(ga turbo.GroupAuth, remoteClient turbo.TClient) (bool, error) {
 	return true, nil
 }
 
@@ -30,11 +29,13 @@ func main() {
 	}()
 
 	// 重连管理器
-	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)
+	reconnManager := turbo.NewReconnectManager(false, -1, -1,
+		func (ga *turbo.GroupAuth, remoteClient *turbo.TClient) (bool, error) {
+		return true, nil})
 
-	clientManager := client.NewClientManager(reconnManager)
+	clientManager := turbo.NewClientManager(reconnManager)
 
-	rcc := turbo.NewRemotingConfig(
+	rcc := turbo.NewTConfig(
 		"turbo-client:localhost:28888",
 		1000, 16*1024,
 		16*1024, 20000, 20000,
@@ -64,23 +65,24 @@ func main() {
 		return conn, nil
 	}("localhost:28888")
 
-	remoteClient := client.NewRemotingClient(conn, func() codec.ICodec {
-		return codec.LengthBasedCodec{
-			MaxFrameLength: packet.MAX_PACKET_BYTES,
-			SkipLength:     4}
-	}, clientPacketDispatcher, rcc)
-	remoteClient.Start()
+	client := turbo.NewTClient(conn,
+		func() turbo.ICodec {
+			return turbo.LengthBasedCodec{
+				MaxFrameLength: turbo.MAX_PACKET_BYTES,
+				SkipLength:     4}
+		}, onMessage, rcc)
+	client.Start()
 
-	auth := &client.GroupAuth{}
+	auth := &turbo.GroupAuth{}
 	auth.GroupId = "a"
 	auth.SecretKey = "123"
-	clientManager.Auth(auth, remoteClient)
+	clientManager.Auth(auth, client)
 
 	//echo command
-	p := packet.NewPacket(1, []byte("echo"))
+	p := turbo.NewPacket(1, []byte("echo"))
 
 	//find a client
-	tmp := clientManager.FindRemoteClients([]string{"a"}, func(groupid string, c *client.RemotingClient) bool {
+	tmp := clientManager.FindTClients([]string{"a"}, func(groupid string, c *turbo.TClient) bool {
 		return false
 	})
 
