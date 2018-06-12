@@ -252,6 +252,8 @@ func (self *TClient) asyncWrite() {
 						p.OnComplete(ERR_TOO_LARGE_PACKET)
 					}
 				} else {
+					//设置数据
+					p.Data = raw
 					//其他的都OK
 					packets = append(packets, p)
 				}
