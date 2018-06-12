@@ -20,9 +20,9 @@ var ERR_PONG = errors.New("ERROR PONG TYPE !")
 type ICodec interface {
 
 	//包装秤packet
-	UnmarshalPacket(p Packet) (Packet, error)
+	UnmarshalPayload(p Packet) (Packet, error)
 	//序列化packet
-	MarshalPacket(p Packet) ([]byte, error)
+	MarshalPayload(p Packet) ([]byte, error)
 }
 
 type LengthBasedCodec struct {

@@ -153,7 +153,7 @@ func(self *TSession) Write(tlv ...*Packet) error{
 	for _, t := range tlv {
 		p := t.Marshal()
 		if nil == p || len(p) <= 0 {
-			log.ErrorLog("stderr","TSession|asyncWrite|MarshalPacket|FAIL|EMPTY PACKET|%s|%v", t)
+			log.ErrorLog("stderr","TSession|asyncWrite|MarshalPayload|FAIL|EMPTY PACKET|%s|%v", t)
 			if nil != t.OnComplete {
 				t.OnComplete(ERR_MARSHAL_PACKET)
 			}
@@ -164,7 +164,7 @@ func(self *TSession) Write(tlv ...*Packet) error{
 		//如果大小超过了最大值那么久写入失败
 		if t.Header.BodyLen > MAX_PACKET_BYTES {
 			if nil != t.OnComplete {
-				log.ErrorLog("stderr","TSession|asyncWrite|MarshalPacket|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
+				log.ErrorLog("stderr","TSession|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
 					t.Header.BodyLen,MAX_PACKET_BYTES)
 				t.OnComplete(ERR_TOO_LARGE_PACKET)
 			}

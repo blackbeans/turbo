@@ -74,10 +74,10 @@ func(self *TClient) onMessage(msg Packet,err error){
 			}()
 
 			//解析包
-			message, err := self.codec().UnmarshalPacket(msg)
+			message, err := self.codec().UnmarshalPayload(msg)
 			if nil != err {
 				// 构造一个error的响应包
-				log.ErrorLog("stderr","TSession|UnmarshalPacket|%s|FAIL|%v|bodyLen:%d",
+				log.ErrorLog("stderr","TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
 						self.remoteAddr, err, msg.Header.BodyLen)
 				errPacket := NewRespPacket(msg.Header.Opaque,msg.Header.CmdType,nil)
 				self.Write(*errPacket)
@@ -238,15 +238,15 @@ func (self *TClient) asyncWrite() {
 			p := <-self.wchan
 			if nil != p {
 				//这里坐下序列化，看下Body是否大于最大的包大小
-				raw, err := self.codec().MarshalPacket(*p)
+				raw, err := self.codec().MarshalPayload(*p)
 				if nil != err {
-					log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPacket|FAIL|%v|%+v",
+					log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|%v|%+v",
 						err, p.PayLoad)
 					if nil != p.OnComplete {
 						p.OnComplete(err)
 					}
 				} else if len(raw) > MAX_PACKET_BYTES {
-					log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPacket|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
+					log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
 						len(raw), MAX_PACKET_BYTES)
 					if nil != p.OnComplete {
 						p.OnComplete(ERR_TOO_LARGE_PACKET)
