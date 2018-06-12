@@ -38,6 +38,5 @@ func (self LengthBasedCodec) UnmarshalPacket(p Packet) (Packet, error) {
 
 //序列化
 func (self LengthBasedCodec) MarshalPacket(packet Packet) ([]byte, error) {
-	rawData := packet.Marshal()
-	return rawData, nil
+	return packet.Data, nil
 }
