@@ -20,10 +20,12 @@ var ERR_PONG = errors.New("ERROR PONG TYPE !")
 
 type ICodec interface {
 
-	//包装秤packet
-	UnmarshalPayload(p Packet) (Packet, error)
-	//序列化packet
-	MarshalPayload(p Packet) ([]byte, error)
+	//反序列化payload
+	//返回解析后的interface{}
+	UnmarshalPayload(p *Packet) (interface{}, error)
+	//序列化payload
+	//返回序列化之后的payload字节
+	MarshalPayload(p *Packet) ([]byte, error)
 }
 
 type LengthBytesCodec struct {
@@ -32,12 +34,12 @@ type LengthBytesCodec struct {
 }
 
 //反序列化
-func (self LengthBytesCodec) UnmarshalPayload(p Packet) (Packet, error) {
-	return p, nil
+func (self LengthBytesCodec) UnmarshalPayload(p *Packet) (interface{}, error) {
+	return p.Data, nil
 }
 
 //序列化
-func (self LengthBytesCodec) MarshalPayload(packet Packet) ([]byte, error) {
+func (self LengthBytesCodec) MarshalPayload(packet *Packet) ([]byte, error) {
 	if raw,ok:= packet.PayLoad.([]byte);ok{
 		return raw,nil
 	}else{

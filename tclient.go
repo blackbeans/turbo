@@ -68,8 +68,9 @@ func (self *TClient) onMessage(msg Packet, err error) {
 				<-self.config.MaxDispatcherNum
 			}()
 
+			p := &msg
 			//解析包
-			message, err := self.codec().UnmarshalPayload(msg)
+			message, err := self.codec().UnmarshalPayload(p)
 			if nil != err {
 				// 构造一个error的响应包
 				log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
@@ -79,9 +80,11 @@ func (self *TClient) onMessage(msg Packet, err error) {
 				return
 			}
 
+			//强制设置payload
+			p.PayLoad = message
 			//创建上下文
 			ctx := &TContext{
-				Message: &message,
+				Message: p,
 				Client:  self,
 			}
 			//处理一下包
@@ -228,7 +231,7 @@ func (self *TClient) asyncWrite() {
 			case p := <-self.wchan:
 				if nil != p {
 					//这里坐下序列化，看下Body是否大于最大的包大小
-					raw, err := self.codec().MarshalPayload(*p)
+					raw, err := self.codec().MarshalPayload(p)
 					if nil != err {
 						log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|%v|%+v",
 							err, p.PayLoad)
@@ -244,6 +247,7 @@ func (self *TClient) asyncWrite() {
 						}
 						continue
 					} else {
+
 						//设置数据
 						p.Data = raw
 						//其他的都OK
