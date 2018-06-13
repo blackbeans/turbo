@@ -55,9 +55,15 @@ func (self *TClient) onMessage(msg Packet, err error) {
 	//如果有错误，那么需要回给客户端错误包
 	if nil != err {
 		log.ErrorLog("stderr", "TSession|onMessage|FAIL|%v", self.remoteAddr, err)
-		errPacket := NewRespPacket(msg.Header.Opaque, msg.Header.CmdType, nil)
-		self.WriteAndGet(*errPacket, 5*time.Second)
-		self.s.Close()
+		ctx := &TContext{
+			Message: &msg,
+			Client:  self,
+			Err:err,
+		}
+		err = self.dis(ctx)
+		if nil != err {
+			log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
+		}
 	} else {
 
 		self.config.MaxDispatcherNum <- 1
@@ -75,8 +81,12 @@ func (self *TClient) onMessage(msg Packet, err error) {
 				// 构造一个error的响应包
 				log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
 					self.remoteAddr, err, msg.Header.BodyLen)
-				errPacket := NewRespPacket(msg.Header.Opaque, msg.Header.CmdType, nil)
-				self.Write(*errPacket)
+				ctx := &TContext{
+					Message: p,
+					Client:  self,
+					Err:err,
+				}
+				err = self.dis(ctx)
 				return
 			}
 
@@ -208,6 +218,12 @@ func (self *TClient) Write(p Packet) (*Future, error) {
 		if nil != err {
 			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(pp.Data))
 			future.Error(err)
+			//生成一个错误的转发
+			ctx := &TContext{
+				Client:self,
+				Message:pp,
+				Err:err}
+			self.dis(ctx)
 		}
 	}
 

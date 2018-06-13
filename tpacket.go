@@ -110,4 +110,5 @@ type IOHandler func(message Packet,err error)
 type TContext struct{
 	Client *TClient
 	Message *Packet
+	Err error //上下文的错误
 }
