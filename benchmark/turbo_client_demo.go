@@ -17,9 +17,6 @@ func onMessage(ctx *turbo.TContext) error {
 	return nil
 }
 
-func handshake(ga turbo.GroupAuth, remoteClient turbo.TClient) (bool, error) {
-	return true, nil
-}
 
 func main() {
 
@@ -67,9 +64,8 @@ func main() {
 
 	client := turbo.NewTClient(conn,
 		func() turbo.ICodec {
-			return turbo.LengthBasedCodec{
-				MaxFrameLength: turbo.MAX_PACKET_BYTES,
-				SkipLength:     4}
+			return turbo.LengthBytesCodec{
+				MaxFrameLength: turbo.MAX_PACKET_BYTES}
 		}, onMessage, rcc)
 	client.Start()
 
@@ -79,7 +75,8 @@ func main() {
 	clientManager.Auth(auth, client)
 
 	//echo command
-	p := turbo.NewPacket(1, []byte("echo"))
+	p := turbo.NewPacket(1,nil)
+	p.PayLoad =  []byte("echo")
 
 	//find a client
 	tmp := clientManager.FindTClients([]string{"a"}, func(groupid string, c *turbo.TClient) bool {

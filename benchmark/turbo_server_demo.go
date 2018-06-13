@@ -10,7 +10,8 @@ import (
 func handle(ctx *turbo.TContext) error{
 	// log.Printf("packetDispatcher|WriteResponse|%s\n", string(p.Data))
 	p := ctx.Message
-	resp := turbo.NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
+	resp := turbo.NewRespPacket(p.Header.Opaque, p.Header.CmdType,nil)
+	resp.PayLoad =  p.Data
 	//直接回写回去
 	ctx.Client.Write(*resp)
 	return nil
