@@ -11,6 +11,7 @@ const (
 //包体过大
 var ERR_TOO_LARGE_PACKET = errors.New("Too Large Packet")
 var ERR_TIMEOUT = errors.New("WAIT RESPONSE TIMEOUT ")
+var ERR_INVALID_PAYLOAD = errors.New("INVALID PAYLOAD TYPE ! ")
 var ERR_MARSHAL_PACKET = errors.New("ERROR MARSHAL PACKET")
 var ERR_OVER_FLOW = errors.New("Group Over Flow")
 var ERR_NO_HOSTS = errors.New("NO VALID RemoteClient")
@@ -25,18 +26,22 @@ type ICodec interface {
 	MarshalPayload(p Packet) ([]byte, error)
 }
 
-type LengthBasedCodec struct {
+type LengthBytesCodec struct {
 	ICodec
 	MaxFrameLength int32 //最大的包大小
-	SkipLength     int16 //跳过长度字节数
 }
 
 //反序列化
-func (self LengthBasedCodec) UnmarshalPacket(p Packet) (Packet, error) {
+func (self LengthBytesCodec) UnmarshalPayload(p Packet) (Packet, error) {
 	return p, nil
 }
 
 //序列化
-func (self LengthBasedCodec) MarshalPacket(packet Packet) ([]byte, error) {
-	return packet.Data, nil
+func (self LengthBytesCodec) MarshalPayload(packet Packet) ([]byte, error) {
+	if raw,ok:= packet.PayLoad.([]byte);ok{
+		return raw,nil
+	}else{
+		return nil,ERR_INVALID_PAYLOAD
+	}
 }
+

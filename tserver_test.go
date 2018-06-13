@@ -15,6 +15,7 @@ var clientf = NewRemotingFlow("turbo-client:localhost:28888")
 
 
 
+
 //开启server
 func TestLineBaseServer(t *testing.T) {
 
@@ -25,10 +26,11 @@ func TestLineBaseServer(t *testing.T) {
 		10*time.Second, 160000)
 
 	server := NewTServerWithCodec("localhost:28889", serConfig, func() ICodec {
-		return LengthBasedCodec{MaxFrameLength: MAX_PACKET_BYTES}
+		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
 	}, func(ctx *TContext) error{
 		p := ctx.Message
-		resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, append(p.Data, []byte{'\r', '\n'}...))
+		resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, nil)
+		resp.PayLoad = p.Data
 		//直接回写回去
 		ctx.Client.Write(*resp)
 		flow.WriteFlow.Incr(1)
@@ -52,7 +54,7 @@ func TestLineBaseServer(t *testing.T) {
 		10*time.Second, 160000)
 
 	remoteClient := NewTClient(conn, func() ICodec {
-		return LengthBasedCodec{MaxFrameLength: MAX_PACKET_BYTES}},
+		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}},
 		func (ctx *TContext) error {
 			ctx.Client.Attach(ctx.Message.Header.Opaque, ctx.Message.Data)
 			return nil
@@ -70,7 +72,8 @@ func TestLineBaseServer(t *testing.T) {
 	}()
 
 	for i := 0; i < 10; i++ {
-		p := NewPacket(1, []byte("echo\n"))
+		p := NewPacket(1, nil)
+		p.PayLoad = []byte("echo")
 		p.Header.Opaque = 1
 		tmp := clientManager.FindTClients([]string{"a"}, func(groupid string, c *TClient) bool {
 			return false
@@ -97,10 +100,11 @@ func BenchmarkRemoteClient(t *testing.B) {
 		"turbo-server:localhost:28888",
 		100, 16*1024,
 		16*1024, 100, 100,
-		10*time.Second, 100),
+		10*time.Second, 100000),
 		func(ctx *TContext) error{
 			p := ctx.Message
-			resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, p.Data)
+			resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, nil)
+			resp.PayLoad = p.Data
 			//直接回写回去
 			ctx.Client.Write(*resp)
 			flow.WriteFlow.Incr(1)
@@ -120,9 +124,8 @@ func BenchmarkRemoteClient(t *testing.B) {
 	conn, _ := dial("localhost:28888")
 	remoteClient := NewTClient(conn,
 		func() ICodec {
-		return LengthBasedCodec{
-			MaxFrameLength: MAX_PACKET_BYTES,
-			SkipLength:     4}
+		return LengthBytesCodec{
+			MaxFrameLength: MAX_PACKET_BYTES}
 	},
 	func (ctx *TContext) error {
 			ctx.Client.Attach(ctx.Message.Header.Opaque, ctx.Message.Data)
@@ -130,7 +133,7 @@ func BenchmarkRemoteClient(t *testing.B) {
 			"turbo-server:localhost:28888",
 			100, 16*1024,
 			16*1024, 100, 100,
-				10*time.Second, 100))
+				10*time.Second, 100000))
 	remoteClient.Start()
 
 	auth := &GroupAuth{}
@@ -143,18 +146,19 @@ func BenchmarkRemoteClient(t *testing.B) {
 		}
 	}()
 
-	t.SetParallelism(4)
+	t.SetParallelism(8)
 
 	t.RunParallel(func(pb *testing.PB) {
 
 		for pb.Next() {
 			for i := 0; i < t.N; i++ {
-				p := NewPacket(1, []byte("echo"))
+				p := NewPacket(1,nil)
+				p.PayLoad =  []byte("echo")
 				tmp := clientManager.FindTClients([]string{"a"}, func(groupid string, c *TClient) bool {
 					return false
 				})
 
-				_, err := tmp["a"][0].WriteAndGet(*p, 500*time.Millisecond)
+				_, err := tmp["a"][0].WriteAndGet(*p, 5*time.Second)
 				clientf.WriteFlow.Incr(1)
 				if nil != err {
 					t.Fail()

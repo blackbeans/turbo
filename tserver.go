@@ -30,9 +30,8 @@ func NewTServer(hostport string, config *TConfig,
 		config:     config,
 		keepalive:  5 * time.Minute,
 		codec: func() ICodec {
-			return LengthBasedCodec{
-				MaxFrameLength: MAX_PACKET_BYTES,
-				SkipLength:     4}
+			return LengthBytesCodec{
+				MaxFrameLength: MAX_PACKET_BYTES}
 
 		}}
 	return server
