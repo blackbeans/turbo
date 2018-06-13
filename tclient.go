@@ -251,14 +251,31 @@ func (self *TClient) asyncWrite() {
 					}
 				}
 
-				//批量写入
-				err := self.s.Write(packets...)
-				//链接是关闭的
-				if nil != err {
-					self.s.Close()
-					continue
+				if len(packets) >=100{
+					//批量写入
+					err := self.s.Write(packets...)
+					//链接是关闭的
+					if nil != err {
+						log.ErrorLog("stderr", "TClient|asyncWrite|Write|FAIL|%v|%d",
+							err,len(packets))
+						self.s.Close()
+						continue
+					}
+					packets = packets[:0]
 				}
-				packets = packets[:0]
+				case <-time.After(100*time.Millisecond):
+				if len(packets)>0 {
+					//批量写入
+					err := self.s.Write(packets...)
+					//链接是关闭的
+					if nil != err {
+						log.ErrorLog("stderr", "TClient|asyncWrite|Write|FAIL|%v|%d",
+							err,len(packets))
+						self.s.Close()
+						continue
+					}
+					packets = packets[:0]
+				}
 
 			}
 
