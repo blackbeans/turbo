@@ -187,15 +187,16 @@ func (self *ClientManager) SubmitReconnect(c *TClient) {
 }
 
 //查找remotingclient
+//可能是已经关闭的状态
 func (self *ClientManager) FindTClient(hostport string) *TClient {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	// log.Printf("ClientManager|FindTClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
-	if !ok || rclient.IsClosed() {
-		//已经关闭的直接返回nil
+	if !ok  {
 		return nil
 	}
+
 	return rclient
 }
 
