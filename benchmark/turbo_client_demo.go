@@ -21,7 +21,7 @@ func onMessage(ctx *turbo.TContext) error {
 func main() {
 
 	go func() {
-		http.ListenAndServe(":13801", nil)
+		http.ListenAndServe(":13802", nil)
 
 	}()
 
@@ -34,9 +34,9 @@ func main() {
 
 	rcc := turbo.NewTConfig(
 		"turbo-client:localhost:28888",
-		1000, 16*1024,
+		50, 16*1024,
 		16*1024, 20000, 20000,
-		10*time.Second, 160000)
+		10*time.Second, 16 * 10000)
 
 	go func() {
 		for {
@@ -87,7 +87,7 @@ func main() {
 		go func() {
 			for {
 				//write command and wait for response
-				_, err := tmp["a"][0].WriteAndGet(*p, 100*time.Millisecond)
+				_, err := tmp["a"][0].WriteAndGet(*p, 5*time.Second)
 				if nil != err {
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)
 					break

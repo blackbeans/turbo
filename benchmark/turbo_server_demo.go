@@ -5,6 +5,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 	"turbo"
+	"log"
+	"runtime"
 )
 
 func handle(ctx *turbo.TContext) error{
@@ -18,17 +20,27 @@ func handle(ctx *turbo.TContext) error{
 }
 
 func main() {
-
+	runtime.GOMAXPROCS(runtime.NumCPU()*2+1)
 	go func() {
 		http.ListenAndServe(":13800", nil)
 
 	}()
 
+
+
+
 	rc := turbo.NewTConfig(
 		"turbo-server:localhost:28888",
-		1000, 16*1024,
+		50, 16*1024,
 		16*1024, 20000, 20000,
-		10*time.Second, 160000)
+		10*time.Second, 16 * 10000)
+
+	go func() {
+		for {
+			log.Println(rc.FlowStat.Stat())
+			time.Sleep(1 * time.Second)
+		}
+	}()
 
 	remoteServer := turbo.NewTServer("localhost:28888", rc, handle)
 	remoteServer.ListenAndServer()
