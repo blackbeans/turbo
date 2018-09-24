@@ -31,7 +31,7 @@ func main() {
 
 	rc := turbo.NewTConfig(
 		"turbo-server:localhost:28888",
-		50, 16*1024,
+		20, 16*1024,
 		16*1024, 20000, 20000,
 		10*time.Second, 16 * 10000)
 

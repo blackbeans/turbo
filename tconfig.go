@@ -109,14 +109,19 @@ func NewTConfig(name string,
 		idleTime:idletime,
 		maxOpaque: maxOpaque}
 
+	qsize := uint(maxdispatcherNum) * 2
+	if uint(maxdispatcherNum) * 2 < 1000 {
+		qsize = 1000
+	}
+
 	dispool := pool.NewExtLimited(
 		uint(maxdispatcherNum) * 30 /100,
 		uint(maxdispatcherNum),
-		uint(maxdispatcherNum) * 2,
+		qsize,
 		30 * time.Second)
 	//初始化
 	rc := &TConfig{
-		FlowStat:         NewRemotingFlow(name),
+		FlowStat:         NewRemotingFlow(name,dispool),
 		dispool:          dispool,
 		ReadBufferSize:   readbuffersize,
 		WriteBufferSize:  writebuffersize,
@@ -126,7 +131,6 @@ func NewTConfig(name string,
 		RequestHolder:    rh,
 		TW:               tw,
 	}
-	rc.FlowStat.DispatcherGo.count = int64(maxdispatcherNum)
 	return rc
 }
 

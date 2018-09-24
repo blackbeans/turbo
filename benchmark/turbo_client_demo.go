@@ -34,7 +34,7 @@ func main() {
 
 	rcc := turbo.NewTConfig(
 		"turbo-client:localhost:28888",
-		50, 16*1024,
+		10, 16*1024,
 		16*1024, 20000, 20000,
 		10*time.Second, 16 * 10000)
 
