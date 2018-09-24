@@ -3,7 +3,7 @@ package turbo
 import (
 	"sync/atomic"
 	"time"
-	"gopkg.in/go-playground/pool.v3"
+	"github.com/blackbeans/pool"
 )
 
 const (
@@ -109,7 +109,10 @@ func NewTConfig(name string,
 		idleTime:idletime,
 		maxOpaque: maxOpaque}
 
-	dispool := pool.NewLimited(uint(maxdispatcherNum))
+	dispool := pool.NewExtLimited(
+		uint(maxdispatcherNum) * 30 /100,
+		uint(maxdispatcherNum),
+		-1,30 * time.Second)
 	//初始化
 	rc := &TConfig{
 		FlowStat:         NewRemotingFlow(name),
