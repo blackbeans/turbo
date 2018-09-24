@@ -112,7 +112,8 @@ func NewTConfig(name string,
 	dispool := pool.NewExtLimited(
 		uint(maxdispatcherNum) * 30 /100,
 		uint(maxdispatcherNum),
-		-1,30 * time.Second)
+		uint(maxdispatcherNum) * 2,
+		30 * time.Second)
 	//初始化
 	rc := &TConfig{
 		FlowStat:         NewRemotingFlow(name),
