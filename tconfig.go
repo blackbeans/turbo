@@ -78,14 +78,7 @@ func (self *Future) Get(timeout <-chan time.Time) (interface{}, error) {
 			return resp, nil
 		}
 	case <-self.ctx.Done():
-		//当前请求已经被中断
-		select {
-		case resp := <-self.response:
-			return resp, nil
-		default:
-			//返回链接中断
-			return nil, ERR_CONNECTION_BROKEN
-		}
+		return nil, ERR_CONNECTION_BROKEN
 	}
 }
 
