@@ -3,8 +3,8 @@ package turbo
 import (
 	log "github.com/blackbeans/log4go"
 	"net"
-	"time"
 	"runtime"
+	"time"
 )
 
 type TServer struct {
@@ -64,12 +64,11 @@ func (self *TServer) ListenAndServer() error {
 
 	listener, err := net.ListenTCP("tcp4", addr)
 	if nil != err {
-		log.Error("TServer|ListenTCP|FAIL|%v|%s",err, addr)
+		log.Error("TServer|ListenTCP|FAIL|%v|%s", err, addr)
 		return err
 	}
 
-
-	stopListener := &StoppedListener{listener, self.stopChan, self.keepalive}
+	stopListener := &StoppedListener{listener, self.stopChan, make(chan *net.TCPConn), self.keepalive}
 
 	//开始服务获取连接
 	go self.serve(stopListener)
@@ -93,7 +92,7 @@ func (self *TServer) serve(l *StoppedListener) error {
 			// log.Debug("TServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
 
-			remoteClient := NewTClient(conn, self.codec,self.onMessage, self.config)
+			remoteClient := NewTClient(conn, self.codec, self.onMessage, self.config)
 			remoteClient.Start()
 		}
 	}
