@@ -17,7 +17,6 @@ func onMessage(ctx *turbo.TContext) error {
 	return nil
 }
 
-
 func main() {
 
 	go func() {
@@ -27,8 +26,9 @@ func main() {
 
 	// 重连管理器
 	reconnManager := turbo.NewReconnectManager(false, -1, -1,
-		func (ga *turbo.GroupAuth, remoteClient *turbo.TClient) (bool, error) {
-		return true, nil})
+		func(ga *turbo.GroupAuth, remoteClient *turbo.TClient) (bool, error) {
+			return true, nil
+		})
 
 	clientManager := turbo.NewClientManager(reconnManager)
 
@@ -36,7 +36,7 @@ func main() {
 		"turbo-client:localhost:28888",
 		10, 16*1024,
 		16*1024, 20000, 20000,
-		10*time.Second, 16 * 10000)
+		10*time.Second)
 
 	go func() {
 		for {
@@ -75,8 +75,8 @@ func main() {
 	clientManager.Auth(auth, client)
 
 	//echo command
-	p := turbo.NewPacket(1,nil)
-	p.PayLoad =  []byte("echo")
+	p := turbo.NewPacket(1, nil)
+	p.PayLoad = []byte("echo")
 
 	//find a client
 	tmp := clientManager.FindTClients([]string{"a"}, func(groupid string, c *turbo.TClient) bool {

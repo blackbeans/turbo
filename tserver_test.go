@@ -1,20 +1,15 @@
 package turbo
 
 import (
-
+	"github.com/blackbeans/pool"
 	"log"
 	"net"
 	"testing"
 	"time"
-
 )
 
-var flow = NewRemotingFlow("turbo-server:localhost:28888")
-var clientf = NewRemotingFlow("turbo-client:localhost:28888")
-
-
-
-
+var flow = NewRemotingFlow("turbo-server:localhost:28888", pool.New())
+var clientf = NewRemotingFlow("turbo-client:localhost:28888", pool.New())
 
 //开启server
 func TestLineBaseServer(t *testing.T) {
@@ -23,11 +18,11 @@ func TestLineBaseServer(t *testing.T) {
 		"turbo-server:localhost:28889",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
-		10*time.Second, 160000)
+		10*time.Second)
 
 	server := NewTServerWithCodec("localhost:28889", serConfig, func() ICodec {
 		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
-	}, func(ctx *TContext) error{
+	}, func(ctx *TContext) error {
 		p := ctx.Message
 		resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, nil)
 		resp.PayLoad = p.Data
@@ -42,8 +37,9 @@ func TestLineBaseServer(t *testing.T) {
 
 	// //重连管理器
 	reconnManager := NewReconnectManager(false, -1, -1,
-		func (ga *GroupAuth, remoteClient *TClient) (bool, error) {
-		return true, nil})
+		func(ga *GroupAuth, remoteClient *TClient) (bool, error) {
+			return true, nil
+		})
 
 	clientManager := NewClientManager(reconnManager)
 
@@ -51,11 +47,12 @@ func TestLineBaseServer(t *testing.T) {
 		"turbo-client:localhost:28889",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
-		10*time.Second, 160000)
+		10*time.Second)
 
 	remoteClient := NewTClient(conn, func() ICodec {
-		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}},
-		func (ctx *TContext) error {
+		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
+	},
+		func(ctx *TContext) error {
 			ctx.Client.Attach(ctx.Message.Header.Opaque, ctx.Message.Data)
 			return nil
 		}, config)
@@ -90,18 +87,15 @@ func TestLineBaseServer(t *testing.T) {
 
 }
 
-
-
 func BenchmarkRemoteClient(t *testing.B) {
-
 
 	remoteServer := NewTServer("localhost:28888",
 		NewTConfig(
-		"turbo-server:localhost:28888",
-		100, 16*1024,
-		16*1024, 100, 100,
-		10*time.Second, 100000),
-		func(ctx *TContext) error{
+			"turbo-server:localhost:28888",
+			100, 16*1024,
+			16*1024, 100, 100,
+			10*time.Second),
+		func(ctx *TContext) error {
 			p := ctx.Message
 			resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, nil)
 			resp.PayLoad = p.Data
@@ -109,31 +103,31 @@ func BenchmarkRemoteClient(t *testing.B) {
 			ctx.Client.Write(*resp)
 			flow.WriteFlow.Incr(1)
 			return nil
-	})
+		})
 	remoteServer.ListenAndServer()
-
-
 
 	// //重连管理器
 	reconnManager := NewReconnectManager(false, -1, -1,
-		func (ga *GroupAuth, remoteClient *TClient) (bool, error) {
-		return true, nil})
+		func(ga *GroupAuth, remoteClient *TClient) (bool, error) {
+			return true, nil
+		})
 
 	clientManager := NewClientManager(reconnManager)
 
 	conn, _ := dial("localhost:28888")
 	remoteClient := NewTClient(conn,
 		func() ICodec {
-		return LengthBytesCodec{
-			MaxFrameLength: MAX_PACKET_BYTES}
-	},
-	func (ctx *TContext) error {
+			return LengthBytesCodec{
+				MaxFrameLength: MAX_PACKET_BYTES}
+		},
+		func(ctx *TContext) error {
 			ctx.Client.Attach(ctx.Message.Header.Opaque, ctx.Message.Data)
-			return nil}, NewTConfig(
+			return nil
+		}, NewTConfig(
 			"turbo-server:localhost:28888",
 			100, 16*1024,
 			16*1024, 100, 100,
-				10*time.Second, 100000))
+			10*time.Second))
 	remoteClient.Start()
 
 	auth := &GroupAuth{}
@@ -152,8 +146,8 @@ func BenchmarkRemoteClient(t *testing.B) {
 
 		for pb.Next() {
 			for i := 0; i < t.N; i++ {
-				p := NewPacket(1,nil)
-				p.PayLoad =  []byte("echo")
+				p := NewPacket(1, nil)
+				p.PayLoad = []byte("echo")
 				tmp := clientManager.FindTClients([]string{"a"}, func(groupid string, c *TClient) bool {
 					return false
 				})
