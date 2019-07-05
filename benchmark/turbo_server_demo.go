@@ -30,7 +30,8 @@ func main() {
 		"turbo-server:localhost:28888",
 		20, 16*1024,
 		16*1024, 20000, 20000,
-		10*time.Second)
+		10*time.Second,
+		50*10000)
 
 	go func() {
 		for {

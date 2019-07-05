@@ -268,7 +268,7 @@ func (self *TClient) Write(p Packet) error {
 			//生成一个错误的转发
 			ctx := &TContext{
 				Client:  self,
-				Message: p,
+				Message: &p,
 				Err:     err}
 			self.dis(ctx)
 		}

@@ -18,7 +18,8 @@ func TestLineBaseServer(t *testing.T) {
 		"turbo-server:localhost:28889",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
-		10*time.Second)
+		10*time.Second,
+		50*10000)
 
 	server := NewTServerWithCodec("localhost:28889", serConfig, func() ICodec {
 		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
@@ -47,7 +48,8 @@ func TestLineBaseServer(t *testing.T) {
 		"turbo-client:localhost:28889",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
-		10*time.Second)
+		10*time.Second,
+		50*10000)
 
 	remoteClient := NewTClient(conn, func() ICodec {
 		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
@@ -94,7 +96,8 @@ func BenchmarkRemoteClient(t *testing.B) {
 			"turbo-server:localhost:28888",
 			100, 16*1024,
 			16*1024, 100, 100,
-			10*time.Second),
+			10*time.Second,
+			50*10000),
 		func(ctx *TContext) error {
 			p := ctx.Message
 			resp := NewRespPacket(p.Header.Opaque, p.Header.CmdType, nil)
@@ -127,7 +130,8 @@ func BenchmarkRemoteClient(t *testing.B) {
 			"turbo-server:localhost:28888",
 			100, 16*1024,
 			16*1024, 100, 100,
-			10*time.Second))
+			10*time.Second,
+			50*10000))
 	remoteClient.Start()
 
 	auth := &GroupAuth{}
