@@ -12,17 +12,26 @@ var CONN_ERROR error = errors.New("STOP LISTENING")
 type StoppedListener struct {
 	*net.TCPListener
 	stop      chan bool
+	conn      chan *net.TCPConn
 	keepalive time.Duration
 }
 
 //accept
 func (self *StoppedListener) Accept() (*net.TCPConn, error) {
 	for {
-		conn, err := self.AcceptTCP()
+		var conn *net.TCPConn
+		var err error
+		go func() {
+			c, e := self.AcceptTCP()
+			if e != nil {
+				err = e
+			}
+			self.conn <- c
+		}()
 		select {
 		case <-self.stop:
 			return nil, CONN_ERROR
-		default:
+		case conn = <-self.conn:
 			//do nothing
 		}
 
