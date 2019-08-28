@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/pool"
 	"net"
 	"time"
 )
@@ -69,7 +68,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 	} else {
 		p := &msg
 		self.config.dispool.Queue(
-			func(wu pool.WorkUnit) (interface{}, error) {
+			func(cctx context.Context) (interface{}, error) {
 				//解析包
 				message, err := self.codec().UnmarshalPayload(p)
 				if nil != err {
@@ -98,7 +97,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 					log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
 				}
 				return nil, err
-			})
+			}, 0)
 	}
 }
 

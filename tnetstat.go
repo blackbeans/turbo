@@ -3,23 +3,22 @@ package turbo
 import (
 	"fmt"
 	"sync/atomic"
-	"github.com/blackbeans/pool"
 )
 
 //network stat
 type NetworkStat struct {
-	ReadCount    int32 `json:"read_count"`
-	ReadBytes    int32 `json:"read_bytes"`
-	WriteCount   int32 `json:"write_count"`
-	WriteBytes   int32 `json:"write_bytes"`
-	DispatcherGo int32 `json:"dispatcher_go"`
-	GoQueueSize int32 `json:"goqueue_size"`
-	Connections  int32 `json:"connections"`
+	ReadCount   int32 `json:"read_count"`
+	ReadBytes   int32 `json:"read_bytes"`
+	WriteCount  int32 `json:"write_count"`
+	WriteBytes  int32 `json:"write_bytes"`
+	DisPoolSize int32 `json:"dispool_size"`
+	DisPoolCap  int32 `json:"dispool_cap"`
+	Connections int32 `json:"connections"`
 }
 
 func (self NetworkStat) String() string {
-	return fmt.Sprintf("read:%dKB/%d\twrite:%dKB/%d\tgo:%d\tconns:%d", self.ReadBytes/1024, self.ReadCount,
-		self.WriteBytes/1024, self.WriteCount, self.DispatcherGo, self.Connections)
+	return fmt.Sprintf("read:%dKB/%d\twrite:%dKB/%d\tgo:%d/%d\tconns:%d", self.ReadBytes/1024, self.ReadCount,
+		self.WriteBytes/1024, self.WriteCount, self.DisPoolSize, self.DisPoolCap, self.Connections)
 }
 
 type RemotingFlow struct {
@@ -32,13 +31,13 @@ type RemotingFlow struct {
 	WriteFlow      *Flow
 	WriteBytesFlow *Flow
 	Connections    *Flow
-	pool pool.Pool
+	pool           *GPool
 }
 
-func NewRemotingFlow(name string,pool pool.Pool) *RemotingFlow {
+func NewRemotingFlow(name string, pool *GPool) *RemotingFlow {
 	return &RemotingFlow{
 		OptimzeStatus:  true,
-		pool:pool,
+		pool:           pool,
 		Name:           name,
 		ReadFlow:       &Flow{},
 		ReadBytesFlow:  &Flow{},
@@ -50,14 +49,15 @@ func NewRemotingFlow(name string,pool pool.Pool) *RemotingFlow {
 
 //网络状态
 func (self *RemotingFlow) Stat() NetworkStat {
+	disSize, disCap := self.pool.Monitor()
 	return NetworkStat{
-		ReadCount:    self.ReadFlow.Changes(),
-		ReadBytes:    self.ReadBytesFlow.Changes(),
-		DispatcherGo: int32(self.pool.CurrWorkers()),
-		GoQueueSize:  int32(self.pool.IncompleteTasks()),
-		WriteCount:   self.WriteFlow.Changes(),
-		WriteBytes:   self.WriteBytesFlow.Changes(),
-		Connections:  self.Connections.Count()}
+		ReadCount:   self.ReadFlow.Changes(),
+		ReadBytes:   self.ReadBytesFlow.Changes(),
+		DisPoolSize: int32(disSize),
+		DisPoolCap:  int32(disCap),
+		WriteCount:  self.WriteFlow.Changes(),
+		WriteBytes:  self.WriteBytesFlow.Changes(),
+		Connections: self.Connections.Count()}
 }
 
 type Flow struct {

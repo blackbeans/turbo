@@ -1,15 +1,21 @@
 package turbo
 
 import (
-	"github.com/blackbeans/pool"
+	"context"
 	"log"
 	"net"
 	"testing"
 	"time"
 )
 
-var flow = NewRemotingFlow("turbo-server:localhost:28888", pool.New())
-var clientf = NewRemotingFlow("turbo-client:localhost:28888", pool.New())
+var flow *RemotingFlow
+var clientf *RemotingFlow
+
+func init() {
+	gpool := NewLimitPool(context.Background(), NewTimerWheel(100, 1), 100)
+	flow = NewRemotingFlow("turbo-server:localhost:28888", gpool)
+	clientf = NewRemotingFlow("turbo-client:localhost:28888", gpool)
+}
 
 //开启server
 func TestLineBaseServer(t *testing.T) {

@@ -2,7 +2,6 @@ package turbo
 
 import (
 	"context"
-	"github.com/blackbeans/pool"
 	"sync/atomic"
 	"time"
 )
@@ -85,7 +84,7 @@ func (self *Future) Get(timeout <-chan time.Time) (interface{}, error) {
 //网络层参数
 type TConfig struct {
 	FlowStat         *RemotingFlow //网络层流量
-	dispool          pool.Pool     //   最大分发处理协程数
+	dispool          *GPool        //   最大分发处理协程数
 	ReadBufferSize   int           //读取缓冲大小
 	WriteBufferSize  int           //写入缓冲大小
 	WriteChannelSize int           //写异步channel长度
@@ -93,6 +92,7 @@ type TConfig struct {
 	IdleTime         time.Duration //连接空闲时间
 	RequestHolder    *ReqHolder
 	TW               *TimerWheel // timewheel
+	cancel           context.CancelFunc
 }
 
 func NewTConfig(name string,
@@ -112,16 +112,8 @@ func NewTConfig(name string,
 		tw:       tw,
 		idleTime: idletime}
 
-	qsize := uint(maxdispatcherNum) * 2
-	if uint(maxdispatcherNum)*2 < 1000 {
-		qsize = 1000
-	}
-
-	dispool := pool.NewExtLimited(
-		uint(maxdispatcherNum)*30/100,
-		uint(maxdispatcherNum),
-		qsize,
-		30*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	dispool := NewLimitPool(ctx, tw, maxdispatcherNum)
 	//初始化
 	rc := &TConfig{
 		FlowStat:         NewRemotingFlow(name, dispool),
@@ -133,6 +125,7 @@ func NewTConfig(name string,
 		IdleTime:         idletime,
 		RequestHolder:    rh,
 		TW:               tw,
+		cancel:           cancel,
 	}
 	return rc
 }
