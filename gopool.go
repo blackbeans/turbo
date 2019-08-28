@@ -119,6 +119,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 						wu.Err = fmt.Errorf("%v", err)
 					}
 					close(wu.ch)
+					cancel()
 				}()
 
 				select {
@@ -151,6 +152,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 					wu.Err = fmt.Errorf("%v", err)
 				}
 				close(wu.ch)
+				cancel()
 			}()
 
 			select {
