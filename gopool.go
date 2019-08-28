@@ -139,6 +139,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 		case <-timeout:
 			wu.Err = ERR_QUEUE_TIMEOUT
 			close(wu.ch)
+			cancel()
 			return wu, wu.Err
 		}
 	} else {
