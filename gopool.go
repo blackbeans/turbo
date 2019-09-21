@@ -214,15 +214,17 @@ func (self *Batch) Wait(timeout time.Duration) ([]*WorkUnit, error) {
 		timeoutCh = tch
 	}
 
+	timeoutClosed := false
 	for i := range self.works {
 		work := self.works[i]
 		//提交异步处理
 		wu, err := self.gopool.queue(work, timeoutCh)
 		if nil != err {
 			log4go.ErrorLog("handler", "Batch|Wait|queue|FAIL|%v", err)
-			if err == ERR_QUEUE_TIMEOUT {
+			if err == ERR_QUEUE_TIMEOUT && !timeoutClosed {
 				//关闭这个channel
 				close(timeoutCh)
+				timeoutClosed = true
 			}
 		}
 		wus = append(wus, wu)
