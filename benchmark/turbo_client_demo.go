@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"net/http"
@@ -63,7 +64,7 @@ func main() {
 		return conn, nil
 	}("localhost:28888")
 
-	client := turbo.NewTClient(conn,
+	client := turbo.NewTClient(context.Background(), conn,
 		func() turbo.ICodec {
 			return turbo.LengthBytesCodec{
 				MaxFrameLength: turbo.MAX_PACKET_BYTES}
