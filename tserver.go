@@ -1,6 +1,7 @@
 package turbo
 
 import (
+	"context"
 	log "github.com/blackbeans/log4go"
 	"net"
 	"runtime"
@@ -8,6 +9,8 @@ import (
 )
 
 type TServer struct {
+	ctx        context.Context
+	cancel     context.CancelFunc
 	hostport   string
 	keepalive  time.Duration
 	stopChan   chan bool
@@ -21,7 +24,6 @@ func NewTServer(hostport string, config *TConfig,
 	onMessage THandler) *TServer {
 
 	runtime.GOMAXPROCS(runtime.NumCPU() + 1)
-
 	server := &TServer{
 		hostport:   hostport,
 		stopChan:   make(chan bool, 1),
@@ -34,6 +36,8 @@ func NewTServer(hostport string, config *TConfig,
 				MaxFrameLength: MAX_PACKET_BYTES}
 
 		}}
+
+	server.ctx, server.cancel = context.WithCancel(context.Background())
 	return server
 }
 
@@ -41,7 +45,7 @@ func NewTServerWithCodec(hostport string, config *TConfig, codec func() ICodec,
 	onMessage THandler) *TServer {
 
 	//设置为8个并发
-	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
+	runtime.GOMAXPROCS(runtime.NumCPU() + 1)
 
 	server := &TServer{
 		hostport:   hostport,
@@ -51,6 +55,7 @@ func NewTServerWithCodec(hostport string, config *TConfig, codec func() ICodec,
 		config:     config,
 		keepalive:  5 * time.Minute,
 		codec:      codec}
+	server.ctx, server.cancel = context.WithCancel(context.Background())
 	return server
 }
 
@@ -79,7 +84,17 @@ func (self *TServer) ListenAndServer() error {
 //networkstat
 func (self *TServer) NetworkStat() NetworkStat {
 	return self.config.FlowStat.Stat()
+}
 
+//列出来客户端
+func (self *TServer) ListClients() []string {
+	clients := make([]string, 0, 10)
+	self.config.FlowStat.Clients.Range(func(key, value interface{}) bool {
+		clients = append(clients, key.(string))
+		return true
+	})
+
+	return clients
 }
 
 func (self *TServer) serve(l *StoppedListener) error {
@@ -89,11 +104,9 @@ func (self *TServer) serve(l *StoppedListener) error {
 			log.Error("TServer|serve|AcceptTCP|FAIL|%s\n", err)
 			continue
 		} else {
-			// log.Debug("TServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
-
-			remoteClient := NewTClient(conn, self.codec, self.onMessage, self.config)
-			remoteClient.Start()
+			tclient := NewTClient(self.ctx, conn, self.codec, self.onMessage, self.config)
+			tclient.Start()
 		}
 	}
 	return nil

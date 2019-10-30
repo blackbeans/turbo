@@ -44,6 +44,8 @@ func NewSession(conn *net.TCPConn, config *TConfig,
 		closeFunc:  closeFunc}
 	//连接数计数
 	config.FlowStat.Connections.Incr(1)
+	//记录下当期那
+	config.FlowStat.Clients.Store(session.remoteAddr, nil)
 	return session
 }
 
@@ -218,6 +220,8 @@ func (self *TSession) Close() error {
 		self.conn.Close()
 		self.closeFunc()
 		self.config.FlowStat.Connections.Incr(-1)
+		//清理掉这个Clients
+		self.config.FlowStat.Clients.Delete(self.remoteAddr)
 		log.InfoLog("stdout", "TSession|Close|%s...", self.remoteAddr)
 	}
 

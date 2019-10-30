@@ -22,10 +22,15 @@ type TClient struct {
 	config     *TConfig
 	authSecond int64 //授权成功时间
 	ctx        context.Context
+	closeFunc  context.CancelFunc
 }
 
-func NewTClient(conn *net.TCPConn, codec func() ICodec, dis THandler,
+func NewTClient(parent context.Context,
+	conn *net.TCPConn, codec func() ICodec, dis THandler,
 	config *TConfig) *TClient {
+
+	//初始化下cancel
+	ctx, closeFunc := context.WithCancel(parent)
 	//创建一个remotingcleint
 	tclient := &TClient{
 		heartbeat: 0,
@@ -33,7 +38,9 @@ func NewTClient(conn *net.TCPConn, codec func() ICodec, dis THandler,
 		dis:       dis,
 		wchan:     make(chan *Packet, config.WriteChannelSize),
 		config:    config,
-		codec:     codec}
+		codec:     codec,
+		ctx:       ctx,
+		closeFunc: closeFunc}
 
 	return tclient
 }
@@ -104,42 +111,19 @@ func (self *TClient) onMessage(msg Packet, err error) {
 //启动当前的client
 func (self *TClient) Start() {
 
-	ctx, closeFunc := context.WithCancel(context.Background())
 	//启动session
-	self.s = NewSession(self.conn, self.config, self.onMessage, closeFunc)
+	self.s = NewSession(self.conn, self.config, self.onMessage, self.closeFunc)
 	//重新初始化
 	laddr := self.conn.LocalAddr().(*net.TCPAddr)
 	raddr := self.conn.RemoteAddr().(*net.TCPAddr)
 	self.localAddr = fmt.Sprintf("%s:%d", laddr.IP, laddr.Port)
 	self.remoteAddr = fmt.Sprintf("%s:%d", raddr.IP, raddr.Port)
-	self.ctx = ctx
-
 	//启动读取
 	self.s.Open()
 	//启动异步写出
 	self.asyncWrite()
 
 	log.InfoLog("stdout", "TClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
-}
-
-//重连
-func (self *TClient) reconnect() (bool, error) {
-
-	conn, err := net.DialTCP("tcp4", nil, self.conn.RemoteAddr().(*net.TCPAddr))
-	if nil != err {
-		log.ErrorLog("stderr", "TClient|RECONNECT|%s|FAIL|%s\n", self.RemoteAddr(), err)
-		return false, err
-	}
-
-	//创建session
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	self.ctx = ctx
-	self.s = NewSession(conn, self.config, self.onMessage, cancelFunc)
-	//重新设置conn
-	self.conn = conn
-	//再次启动remoteClient
-	self.Start()
-	return true, nil
 }
 
 //同步发起ping的命令

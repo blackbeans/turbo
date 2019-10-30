@@ -3,6 +3,7 @@ package turbo
 import (
 	log "github.com/blackbeans/log4go"
 	"math"
+	"net"
 	"sync"
 	"time"
 )
@@ -29,21 +30,25 @@ func (self *reconnectTask) reconnect(handshake func(ga *GroupAuth, remoteClient 
 
 	self.retryCount++
 	//开启remoteClient的重连任务
-	succ, err := self.remoteClient.reconnect()
-	if nil != err || !succ {
-		return succ, err
+	tcpAddr, _ := net.ResolveTCPAddr("tcp4", self.remoteClient.RemoteAddr())
+	conn, err := net.DialTCP("tcp4", nil, tcpAddr)
+	if nil != err {
+		log.ErrorLog("stderr", "TClient|RECONNECT|%s|FAIL|%s\n", self.remoteClient.RemoteAddr(), err)
+		return false, err
 	}
-
+	//重新设置conn
+	self.remoteClient.conn = conn
+	self.remoteClient.Start()
 	return handshake(self.ga, self.remoteClient)
 }
 
 //重连管理器
 type ReconnectManager struct {
-	timers            map[string] /*hostport*/int64
+	timers            map[string] /*hostport*/ int64
 	allowReconnect    bool          //是否允许重连
 	reconnectTimeout  time.Duration //重连超时
 	maxReconnectTimes int           //最大重连次数
-	tw *TimerWheel
+	tw                *TimerWheel
 	handshake         func(ga *GroupAuth, remoteClient *TClient) (bool, error)
 	lock              sync.Mutex
 }
@@ -55,7 +60,7 @@ func NewReconnectManager(allowReconnect bool,
 
 	manager := &ReconnectManager{
 		timers:            make(map[string]int64, 20),
-		tw : NewTimerWheel(1* time.Second,10),
+		tw:                NewTimerWheel(1*time.Second, 10),
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,
 		maxReconnectTimes: maxReconnectTimes, handshake: handshake}
@@ -80,51 +85,51 @@ func (self *ReconnectManager) submit(c *TClient, ga *GroupAuth, finishHook func(
 
 //提交一个任务
 //调用方外面需要加锁。否则还有并发安全问题。
-func(self *ReconnectManager) submit0(task *reconnectTask) {
+func (self *ReconnectManager) submit0(task *reconnectTask) {
 
 	addr := task.remoteClient.RemoteAddr()
 	//创建定时的timer
 	timerid, _ := self.tw.AddTimer(
 		task.nextTimeout,
 		func(t time.Time) {
-		succ, err := task.reconnect(self.handshake)
-		if nil != err || !succ {
-			log.Info("ReconnectManager|RECONNECT|FAIL|%v|%s|%d",err, addr, task.retryCount)
-			retry := func() bool{
+			succ, err := task.reconnect(self.handshake)
+			if nil != err || !succ {
+				log.Info("ReconnectManager|RECONNECT|FAIL|%v|%s|%d", err, addr, task.retryCount)
+				retry := func() bool {
+					self.lock.Lock()
+					defer self.lock.Unlock()
+					//如果当前重试次数大于最大重试次数则放弃
+					if task.retryCount > self.maxReconnectTimes {
+						log.Info("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d", addr, task.retryCount)
+						_, ok := self.timers[addr]
+						if ok {
+							delete(self.timers, addr)
+							task.finishHook(addr)
+						}
+						return false
+					}
+					return true
+				}()
+				if retry {
+					//继续进行下次重连
+					task.nextTimeout = time.Duration(int64(math.Pow(2, float64(task.retryCount))) * int64(self.reconnectTimeout))
+					//记录timer
+					self.lock.Lock()
+					self.submit0(task)
+					self.lock.Unlock()
+				}
+
+			} else {
 				self.lock.Lock()
 				defer self.lock.Unlock()
-				//如果当前重试次数大于最大重试次数则放弃
-				if task.retryCount > self.maxReconnectTimes {
-					log.Info("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d", addr, task.retryCount)
-					_, ok := self.timers[addr]
-					if ok {
-						delete(self.timers, addr)
-						task.finishHook(addr)
-					}
-					return false
+				_, ok := self.timers[addr]
+				if ok {
+					delete(self.timers, addr)
 				}
-				return true
-			}()
-			if retry {
-				//继续进行下次重连
-				task.nextTimeout = time.Duration(int64(math.Pow(2, float64(task.retryCount))) * int64(self.reconnectTimeout))
-				//记录timer
-				self.lock.Lock()
-				self.submit0(task)
-				self.lock.Unlock()
+				log.Info("ReconnectManager|RECONNECT|SUCC|%s|addr:%s|retryCount:%d", task.remoteClient.RemoteAddr(), addr, task.retryCount)
 			}
 
-		} else {
-			self.lock.Lock()
-			defer self.lock.Unlock()
-			_, ok := self.timers[addr]
-			if ok {
-				delete(self.timers, addr)
-			}
-			log.Info("ReconnectManager|RECONNECT|SUCC|%s|addr:%s|retryCount:%d", task.remoteClient.RemoteAddr(), addr,  task.retryCount)
-		}
-
-	}, nil)
+		}, nil)
 
 	//调用方保证这里线程安全
 	self.timers[addr] = timerid

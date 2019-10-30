@@ -2,6 +2,7 @@ package turbo
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 )
 
@@ -31,6 +32,7 @@ type RemotingFlow struct {
 	WriteFlow      *Flow
 	WriteBytesFlow *Flow
 	Connections    *Flow
+	Clients        sync.Map //所有的客户端链接
 	pool           *GPool
 }
 
@@ -39,6 +41,7 @@ func NewRemotingFlow(name string, pool *GPool) *RemotingFlow {
 		OptimzeStatus:  true,
 		pool:           pool,
 		Name:           name,
+		Clients:        sync.Map{},
 		ReadFlow:       &Flow{},
 		ReadBytesFlow:  &Flow{},
 		DispatcherGo:   &Flow{},
