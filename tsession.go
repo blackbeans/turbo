@@ -3,7 +3,6 @@ package turbo
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"net"
 	"time"
 
@@ -20,11 +19,10 @@ type TSession struct {
 	lasttime   uint32
 	config     *TConfig
 	onMessage  IOHandler
-	closeFunc  context.CancelFunc
 }
 
 func NewSession(conn *net.TCPConn, config *TConfig,
-	onMsg IOHandler, closeFunc context.CancelFunc) *TSession {
+	onMsg IOHandler) *TSession {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(config.IdleTime * 2)
@@ -40,8 +38,7 @@ func NewSession(conn *net.TCPConn, config *TConfig,
 		isClose:    false,
 		remoteAddr: conn.RemoteAddr().String(),
 		onMessage:  onMsg,
-		config:     config,
-		closeFunc:  closeFunc}
+		config:     config}
 	//连接数计数
 	config.FlowStat.Connections.Incr(1)
 	//记录下当期那
@@ -218,7 +215,6 @@ func (self *TSession) Close() error {
 		//flush
 		self.bw.Flush()
 		self.conn.Close()
-		self.closeFunc()
 		self.config.FlowStat.Connections.Incr(-1)
 		//清理掉这个Clients
 		self.config.FlowStat.Clients.Delete(self.remoteAddr)

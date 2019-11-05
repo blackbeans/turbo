@@ -112,7 +112,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 func (self *TClient) Start() {
 
 	//启动session
-	self.s = NewSession(self.conn, self.config, self.onMessage, self.closeFunc)
+	self.s = NewSession(self.conn, self.config, self.onMessage)
 	//重新初始化
 	laddr := self.conn.LocalAddr().(*net.TCPAddr)
 	raddr := self.conn.RemoteAddr().(*net.TCPAddr)
@@ -322,6 +322,7 @@ func (self *TClient) IsClosed() bool {
 }
 
 func (self *TClient) Shutdown() {
+	self.closeFunc()
 	self.s.Close()
 	log.Info("TClient|Shutdown|%s...", self.RemoteAddr())
 }
