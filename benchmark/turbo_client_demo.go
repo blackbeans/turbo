@@ -8,7 +8,7 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"turbo"
+	"github.com/blackbeans/turbo"
 )
 
 func onMessage(ctx *turbo.TContext) error {

@@ -3,7 +3,6 @@ package turbo
 import (
 	"context"
 	"fmt"
-	"git.uneed.com/server/unicom/schedule"
 	"sort"
 	"testing"
 	"time"
@@ -12,7 +11,7 @@ import (
 //测试gpool队列
 func TestGPool_Queue(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	tw := schedule.NewTimerWheel(100*time.Millisecond, 10)
+	tw := NewTimerWheel(100*time.Millisecond, 10)
 	gpool := NewLimitPool(ctx, tw, 100)
 	go func() {
 		for {
@@ -62,7 +61,7 @@ func TestGPool_Queue(t *testing.T) {
 //测试下batch
 func TestNewBatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	tw := schedule.NewTimerWheel(100*time.Millisecond, 10)
+	tw := NewTimerWheel(100*time.Millisecond, 10)
 	gpool := NewLimitPool(ctx, tw, 100)
 	go func() {
 		for {
@@ -138,7 +137,7 @@ func TestNewBatch(t *testing.T) {
 
 func TestGPool_Cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	tw := schedule.NewTimerWheel(100*time.Millisecond, 10)
+	tw := NewTimerWheel(100*time.Millisecond, 10)
 	gpool := NewLimitPool(ctx, tw, 100)
 	go func() {
 		for {

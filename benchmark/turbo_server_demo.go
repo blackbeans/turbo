@@ -1,12 +1,12 @@
 package main
 
 import (
+	"github.com/blackbeans/turbo"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"runtime"
 	"time"
-	"turbo"
 )
 
 func handle(ctx *turbo.TContext) error {
