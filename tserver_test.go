@@ -40,6 +40,7 @@ func TestLineBaseServer(t *testing.T) {
 	})
 	server.ListenAndServer()
 
+
 	conn, _ := dial("localhost:28889")
 
 	// //重连管理器
@@ -56,8 +57,8 @@ func TestLineBaseServer(t *testing.T) {
 		16*1024, 10000, 10000,
 		10*time.Second,
 		50*10000)
-
-	remoteClient := NewTClient(conn, func() ICodec {
+	ctx,_  := context.WithCancel(context.Background())
+	remoteClient := NewTClient(ctx,conn, func() ICodec {
 		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
 	},
 		func(ctx *TContext) error {
@@ -122,9 +123,9 @@ func BenchmarkRemoteClient(t *testing.B) {
 		})
 
 	clientManager := NewClientManager(reconnManager)
-
+	ctx,_  := context.WithCancel(context.Background())
 	conn, _ := dial("localhost:28888")
-	remoteClient := NewTClient(conn,
+	remoteClient := NewTClient(ctx,conn,
 		func() ICodec {
 			return LengthBytesCodec{
 				MaxFrameLength: MAX_PACKET_BYTES}
