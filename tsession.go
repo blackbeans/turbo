@@ -79,7 +79,7 @@ func (self *TSession) Open() {
 					self.Close()
 					return err
 				}
-
+				self.lasttime = uint32(time.Now().Unix())
 				br := bytes.NewReader(buff)
 				head, err := UnmarshalHeader(br)
 				if nil != err {
