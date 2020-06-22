@@ -115,7 +115,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 				defer func() {
 					<-self.limiter
 					if err := recover(); nil != err {
-						log4go.ErrorLog("handler", "GPool|Queue|Panic|%v|%s", err, string(debug.Stack()))
+						log4go.ErrorLog("stderr", "GPool|Queue|Panic|%v|%s", err, string(debug.Stack()))
 						wu.Err = fmt.Errorf("%v", err)
 					}
 					close(wu.ch)
@@ -133,7 +133,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 				//执行异步方法
 				wu.Value, wu.Err = work(ctx)
 				if nil != wu.Err {
-					log4go.ErrorLog("handler", "GPool|Queue|work|FAIL|%v", wu.Err)
+					log4go.ErrorLog("stderr", "GPool|Queue|work|FAIL|%v", wu.Err)
 				}
 			}()
 		case <-timeout:
@@ -149,7 +149,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 			defer func() {
 				<-self.limiter
 				if err := recover(); nil != err {
-					log4go.ErrorLog("handler", "GPool|Queue|Panic|%v|%s", err, string(debug.Stack()))
+					log4go.ErrorLog("stderr", "GPool|Queue|Panic|%v|%s", err, string(debug.Stack()))
 					wu.Err = fmt.Errorf("%v", err)
 				}
 				close(wu.ch)
@@ -168,7 +168,7 @@ func (self *GPool) queue(work WorkFunc, timeout chan time.Time) (*WorkUnit, erro
 			//执行异步方法
 			wu.Value, wu.Err = work(ctx)
 			if nil != wu.Err {
-				log4go.ErrorLog("handler", "GPool|Queue|work|FAIL|%v", wu.Err)
+				log4go.ErrorLog("stderr", "GPool|Queue|work|FAIL|%v", wu.Err)
 			}
 		}()
 	}
@@ -220,7 +220,7 @@ func (self *Batch) Wait(timeout time.Duration) ([]*WorkUnit, error) {
 		//提交异步处理
 		wu, err := self.gopool.queue(work, timeoutCh)
 		if nil != err {
-			log4go.ErrorLog("handler", "Batch|Wait|queue|FAIL|%v", err)
+			log4go.ErrorLog("stderr", "Batch|Wait|queue|FAIL|%v", err)
 			if err == ERR_QUEUE_TIMEOUT && !timeoutClosed {
 				//关闭这个channel
 				close(timeoutCh)
