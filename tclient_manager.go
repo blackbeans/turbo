@@ -55,14 +55,8 @@ func (self *ClientManager) evict() {
 
 //connection numbers
 func (self *ClientManager) ConnNum() int32 {
-	i := int32(0)
 	clients := self.ClientsClone()
-	for _, c := range clients {
-		if !c.IsClosed() {
-			i++
-		}
-	}
-	return i
+	return int32(len(clients))
 }
 
 //验证是否授权
@@ -129,6 +123,14 @@ func (self *ClientManager) DeleteClients(hostports ...string) {
 }
 
 func (self *ClientManager) removeClient(hostport string) {
+
+	//删除hostport->client的对应关系
+	c, ok := self.allClients[hostport]
+	if ok && nil != c {
+		c.Shutdown()
+		delete(self.allClients, hostport)
+	}
+
 	ga, ok := self.groupAuth[hostport]
 	if ok {
 		//删除分组
@@ -143,14 +145,6 @@ func (self *ClientManager) removeClient(hostport string) {
 				}
 			}
 		}
-
-		//删除hostport->client的对应关系
-		c, ok := self.allClients[hostport]
-		if ok {
-			c.Shutdown()
-			delete(self.allClients, hostport)
-		}
-
 		//判断groupClient中是否还存在连接，不存在则直接移除该分组
 		gc, ok = self.groupClients[ga.GroupId]
 		if ok && len(gc) <= 0 {
@@ -177,12 +171,10 @@ func (self *ClientManager) SubmitReconnect(c *TClient) {
 		})
 		return
 
-	}else if ok{
+	} else if ok {
 		//不需要重连的直接删除掉连接,或者分组不存在则直接删除
 		self.removeClient(c.RemoteAddr())
 	}
-
-
 
 }
 
@@ -193,7 +185,7 @@ func (self *ClientManager) FindTClient(hostport string) *TClient {
 	defer self.lock.RUnlock()
 	// log.Printf("ClientManager|FindTClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
-	if !ok  {
+	if !ok {
 		return nil
 	}
 
@@ -203,7 +195,7 @@ func (self *ClientManager) FindTClient(hostport string) *TClient {
 //查找匹配的groupids
 func (self *ClientManager) FindTClients(groupIds []string, filter func(groupId string, rc *TClient) bool) map[string][]*TClient {
 	clients := make(map[string][]*TClient, 10)
-	closedClients := make(map[string]*TClient,2)
+	closedClients := make(map[string]*TClient, 2)
 	self.lock.RLock()
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {
