@@ -144,7 +144,7 @@ func (self *ClientManager) removeClient(hostport string) {
 		if ok && len(gc) <= 0 {
 			//移除group2Clients
 			delete(self.groupClients, ga.GroupId)
-			log.Info("ClientManager|removeClient|EmptyGroup|%s...\n", ga.GroupId)
+			log.InfoLog("stdout", "ClientManager|removeClient|EmptyGroup|%s...", ga.GroupId)
 		}
 	}
 
@@ -154,7 +154,7 @@ func (self *ClientManager) removeClient(hostport string) {
 		c.Shutdown()
 		delete(self.allClients, hostport)
 	}
-	log.Info("ClientManager|removeClient|%s...\n", hostport)
+	log.InfoLog("stdout", "ClientManager|removeClient|%s...%d", hostport, len(self.allClients))
 }
 
 func (self *ClientManager) SubmitReconnect(c *TClient) {
