@@ -78,9 +78,9 @@ func (self *ClientManager) Auth(auth *GroupAuth, client *TClient) bool {
 	//创建remotingClient
 	//增加授权时间的秒数
 	client.authSecond = time.Now().Unix()
+	self.groupAuth[client.RemoteAddr()] = auth
 	self.groupClients[auth.GroupId] = append(cs, client)
 	self.allClients[client.RemoteAddr()] = client
-	self.groupAuth[client.RemoteAddr()] = auth
 	return true
 }
 
@@ -124,13 +124,6 @@ func (self *ClientManager) DeleteClients(hostports ...string) {
 
 func (self *ClientManager) removeClient(hostport string) {
 
-	//删除hostport->client的对应关系
-	c, ok := self.allClients[hostport]
-	if ok && nil != c {
-		c.Shutdown()
-		delete(self.allClients, hostport)
-	}
-
 	ga, ok := self.groupAuth[hostport]
 	if ok {
 		//删除分组
@@ -145,6 +138,7 @@ func (self *ClientManager) removeClient(hostport string) {
 				}
 			}
 		}
+
 		//判断groupClient中是否还存在连接，不存在则直接移除该分组
 		gc, ok = self.groupClients[ga.GroupId]
 		if ok && len(gc) <= 0 {
@@ -154,6 +148,12 @@ func (self *ClientManager) removeClient(hostport string) {
 		}
 	}
 
+	//删除hostport->client的对应关系
+	c, ok := self.allClients[hostport]
+	if ok && nil != c {
+		c.Shutdown()
+		delete(self.allClients, hostport)
+	}
 	log.Info("ClientManager|removeClient|%s...\n", hostport)
 }
 
