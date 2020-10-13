@@ -167,7 +167,7 @@ func (self *TClient) fillOpaque(p *Packet) uint32 {
 func (self *TClient) Attach(opaque uint32, obj interface{}) {
 	defer func() {
 		if err := recover(); nil != err {
-			log.ErrorLog("stderr", "TClient|Attach|FAIL|%s|%s\n", err, obj)
+			log.ErrorLog("stderr", "TClient|Attach|FAIL|%s|%s", err, obj)
 		}
 	}()
 
@@ -186,7 +186,7 @@ func (self *TClient) WriteAndGet(p Packet,
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
 		if nil != err {
-			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(pp.Data))
+			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(pp.Data))
 			future.Error(err)
 			//生成一个错误的转发
 			ctx := &TContext{
@@ -220,7 +220,7 @@ func (self *TClient) GroupWriteAndGet(timeout time.Duration, packets ...Packet) 
 		//写入完成之后的操作
 		pp.OnComplete = func(err error) {
 			if nil != err {
-				log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(pp.Data))
+				log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(pp.Data))
 				future.Error(err)
 				//生成一个错误的转发
 				ctx := &TContext{
@@ -247,7 +247,7 @@ func (self *TClient) Write(p Packet) error {
 	//写入完成之后的操作
 	p.OnComplete = func(err error) {
 		if nil != err {
-			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(p.Data))
+			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(p.Data))
 			//生成一个错误的转发
 			ctx := &TContext{
 				Client:  self,
@@ -288,7 +288,7 @@ func (self *TClient) asyncWrite() {
 						}
 						continue
 					} else if len(raw) > MAX_PACKET_BYTES {
-						log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
+						log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d",
 							len(raw), MAX_PACKET_BYTES)
 						if nil != p.OnComplete {
 							p.OnComplete(ERR_TOO_LARGE_PACKET)
