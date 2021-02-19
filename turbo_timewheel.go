@@ -128,7 +128,7 @@ func (self *TimerWheel) RepeatedTimer(interval time.Duration,
 		timerId:  timerId(),
 		expired:  time.Now().Add(interval),
 		onTimeout: func(t time.Time) {
-			if nil!=onTimout {
+			if nil != onTimout {
 				onTimout(t)
 			}
 		},
@@ -147,7 +147,7 @@ func (self *TimerWheel) AddTimer(timeout time.Duration, onTimout OnEvent, onCanc
 			defer func() {
 				ch <- t
 			}()
-			if nil!=onTimout {
+			if nil != onTimout {
 				onTimout(t)
 			}
 		},
@@ -202,8 +202,7 @@ func (self *TimerWheel) checkExpired(now time.Time) {
 				}
 				//重新加入这个repeated 时间
 				t.timerId = timerId()
-				self.addTimer<-t
-
+				self.onAddTimer(t)
 			} else {
 				delete(self.hashTimer, t.timerId)
 			}
@@ -229,11 +228,7 @@ func (self *TimerWheel) start() {
 				}
 
 			case t := <-self.addTimer:
-				heap.Push(&self.timerHeap, t)
-				//只有不是repeated那么加入hash结构，做对应关系
-				if !t.repeated {
-					self.hashTimer[t.timerId] = t
-				}
+				self.onAddTimer(t)
 			case timerid := <-self.cancelTimer:
 				if t, ok := self.hashTimer[timerid]; ok {
 					delete(self.hashTimer, timerid)
@@ -249,4 +244,12 @@ func (self *TimerWheel) start() {
 			}
 		}
 	}()
+}
+
+func (self *TimerWheel) onAddTimer(t *Timer) {
+	heap.Push(&self.timerHeap, t)
+	//只有不是repeated那么加入hash结构，做对应关系
+	if !t.repeated {
+		self.hashTimer[t.timerId] = t
+	}
 }
