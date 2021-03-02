@@ -2,6 +2,7 @@ package turbo
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -12,9 +13,12 @@ const (
 
 //-----------响应的future
 type Future struct {
-	timeout    time.Duration
-	opaque     uint32
-	response   chan interface{}
+	timeout time.Duration
+	opaque  uint32
+	once    sync.Once
+	ch      chan interface{}
+
+	response   interface{}
 	TargetHost string
 	Err        error
 	ctx        context.Context
@@ -33,51 +37,43 @@ func NewFuture(opaque uint32, timeout time.Duration, targetHost string, ctx cont
 
 //创建有错误的future
 func NewErrFuture(opaque uint32, targetHost string, err error, ctx context.Context) *Future {
-	return &Future{
+	f := &Future{
 		timeout:    0,
 		opaque:     opaque,
 		response:   make(chan interface{}, 1),
 		TargetHost: targetHost,
-		Err:        err,
 		ctx:        ctx}
+	f.Error(err)
+	return f
 }
 
-func (self *Future) Error(err error) {
-	self.Err = err
-	self.response <- err
-}
-
-func (self *Future) SetResponse(resp interface{}) {
-	self.response <- resp
+func (f *Future) Error(err error) {
+	f.once.Do(func() {
+		f.Err = err
+		close(f.ch)
+	})
 
 }
 
-func (self *Future) Get(timeout <-chan time.Time) (interface{}, error) {
-	//强制设置
-	if nil != self.Err {
-		return nil, self.Err
-	}
+func (f *Future) SetResponse(resp interface{}) {
+	f.once.Do(func() {
+		f.response = resp
+		close(f.ch)
+	})
+}
+
+func (f *Future) Get(timeout <-chan time.Time) (interface{}, error) {
 
 	select {
 	case <-timeout:
-		select {
-		case resp := <-self.response:
-			return resp, nil
-		default:
-			//如果是已经超时了但是当前还是没有响应也认为超时
-			return nil, ERR_TIMEOUT
-		}
-
-	case resp := <-self.response:
-		e, ok := resp.(error)
-		if ok {
-			return nil, e
-		} else {
-			//如果没有错误直接等待结果
-			return resp, nil
-		}
-	case <-self.ctx.Done():
-		return nil, ERR_CONNECTION_BROKEN
+		//如果是已经超时了但是当前还是没有响应也认为超时
+		f.Error(ERR_TIMEOUT)
+		return f.response, f.Err
+	case <-f.ctx.Done():
+		f.Error(ERR_CONNECTION_BROKEN)
+		return f.response, f.Err
+	case <-f.ch:
+		return f.response, f.Err
 	}
 }
 
