@@ -29,7 +29,7 @@ func NewFuture(opaque uint32, timeout time.Duration, targetHost string, ctx cont
 	return &Future{
 		timeout:    timeout,
 		opaque:     opaque,
-		response:   make(chan interface{}, 1),
+		ch:         make(chan interface{}, 1),
 		TargetHost: targetHost,
 		ctx:        ctx,
 		Err:        nil}
@@ -40,7 +40,7 @@ func NewErrFuture(opaque uint32, targetHost string, err error, ctx context.Conte
 	f := &Future{
 		timeout:    0,
 		opaque:     opaque,
-		response:   make(chan interface{}, 1),
+		ch:         make(chan interface{}, 1),
 		TargetHost: targetHost,
 		ctx:        ctx}
 	f.Error(err)
