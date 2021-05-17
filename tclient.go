@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	log "github.com/blackbeans/log4go"
 	"net"
 	"time"
+
+	log "github.com/blackbeans/log4go"
 )
 
 //网络层的client
@@ -74,37 +75,36 @@ func (self *TClient) onMessage(msg Packet, err error) {
 		}
 	} else {
 		p := &msg
-		self.config.dispool.Queue(
-			func(cctx context.Context) (interface{}, error) {
-				//解析包
-				message, err := self.codec().UnmarshalPayload(p)
-				if nil != err {
-					// 构造一个error的响应包
-					log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
-						self.remoteAddr, err, msg.Header.BodyLen)
-					ctx := &TContext{
-						Message: p,
-						Client:  self,
-						Err:     err,
-					}
-					err = self.dis(ctx)
-					return nil, nil
-				}
-
-				//强制设置payload
-				p.PayLoad = message
-				//创建上下文
+		self.config.dispool.Queue(self.ctx, func(cctx context.Context) (interface{}, error) {
+			//解析包
+			message, err := self.codec().UnmarshalPayload(p)
+			if nil != err {
+				// 构造一个error的响应包
+				log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
+					self.remoteAddr, err, msg.Header.BodyLen)
 				ctx := &TContext{
 					Message: p,
 					Client:  self,
+					Err:     err,
 				}
-				//处理一下包
 				err = self.dis(ctx)
-				if nil != err {
-					log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
-				}
-				return nil, err
-			}, 0)
+				return nil, nil
+			}
+
+			//强制设置payload
+			p.PayLoad = message
+			//创建上下文
+			ctx := &TContext{
+				Message: p,
+				Client:  self,
+			}
+			//处理一下包
+			err = self.dis(ctx)
+			if nil != err {
+				log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
+			}
+			return nil, err
+		})
 	}
 }
 

@@ -1,11 +1,12 @@
 package turbo
 
 import (
-	log "github.com/blackbeans/log4go"
 	"math"
 	"net"
 	"sync"
 	"time"
+
+	log "github.com/blackbeans/log4go"
 )
 
 //-------------重连任务
@@ -44,7 +45,7 @@ func (self *reconnectTask) reconnect(handshake func(ga *GroupAuth, remoteClient 
 
 //重连管理器
 type ReconnectManager struct {
-	timers            map[string] /*hostport*/ int64
+	timers            map[string] /*hostport*/ uint32
 	allowReconnect    bool          //是否允许重连
 	reconnectTimeout  time.Duration //重连超时
 	maxReconnectTimes int           //最大重连次数
@@ -59,7 +60,7 @@ func NewReconnectManager(allowReconnect bool,
 	handshake func(ga *GroupAuth, remoteClient *TClient) (bool, error)) *ReconnectManager {
 
 	manager := &ReconnectManager{
-		timers:            make(map[string]int64, 20),
+		timers:            make(map[string]uint32, 20),
 		tw:                NewTimerWheel(1*time.Second, 10),
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,

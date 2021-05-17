@@ -25,7 +25,6 @@ limitations under the License.
 
 // c is an LRU c. It is not safe for concurrent access.
 type cache struct {
-
 	sync.RWMutex
 
 	// MaxEntries is the maximum number of c entries before
@@ -35,8 +34,6 @@ type cache struct {
 	// OnEvicted optionally specificies a callback function to be
 	// executed when an entry is purged from the c.
 	OnEvicted func(key Key, value interface{})
-
-
 
 	ll    *list.List
 	cache map[interface{}]*list.Element
@@ -115,8 +112,7 @@ func (c *cache) Remove(key Key) interface{} {
 }
 
 // RemoveOldest removes the oldest item from the c.
-func (c *cache) removeOldest() interface{}{
-
+func (c *cache) removeOldest() interface{} {
 
 	if c.cache == nil {
 		return nil
@@ -129,7 +125,7 @@ func (c *cache) removeOldest() interface{}{
 	return nil
 }
 
-func (c *cache) removeElement(e *list.Element) interface{}{
+func (c *cache) removeElement(e *list.Element) interface{} {
 	c.ll.Remove(e)
 	kv := e.Value.(*entry)
 	delete(c.cache, kv.key)
@@ -164,3 +160,16 @@ func (c *cache) Clear() {
 	c.cache = nil
 }
 
+//iterator
+func (c *cache) Iterator(do func(k, v interface{}) error) {
+	c.RLock()
+	defer c.RUnlock()
+	for _, e := range c.cache {
+		kv := e.Value.(*entry)
+		err := do(kv.key, kv.value)
+		//err break finish iterator
+		if nil != err {
+			break
+		}
+	}
+}

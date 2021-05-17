@@ -101,15 +101,14 @@ func NewTConfig(name string,
 	maxOpaque int) *TConfig {
 
 	tw := NewTimerWheel(100*time.Millisecond, 50)
-
+	ctx, cancel := context.WithCancel(context.Background())
 	rh := &ReqHolder{
 		opaque:   0,
-		holder:   NewLRUCache(maxOpaque, tw, nil),
+		holder:   NewLRUCache(ctx, maxOpaque, tw, nil),
 		tw:       tw,
 		idleTime: idletime}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	dispool := NewLimitPool(ctx, tw, maxdispatcherNum)
+	dispool := NewLimitPool(ctx, maxdispatcherNum)
 	//初始化
 	rc := &TConfig{
 		FlowStat:         NewRemotingFlow(name, dispool),
