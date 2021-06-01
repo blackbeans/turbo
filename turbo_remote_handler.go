@@ -1,12 +1,22 @@
 package turbo
 
 import (
-	log "github.com/blackbeans/log4go"
+	"context"
 	"math/rand"
+
+	log "github.com/blackbeans/log4go"
 )
 
 //没有链接的分组直接失败
 var EMPTY_FUTURE = make(map[string]*Future, 0)
+
+var cancelledCtx context.Context
+
+func init() {
+	ctx, cancel := context.WithCancel(context.TODO())
+	cancel()
+	cancelledCtx = ctx
+}
 
 //远程操作的remotinghandler
 
@@ -83,7 +93,11 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 			} else {
 				//记为失败的下次需要重新发送
 				// log.Debug("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
-				futures[host] = NewErrFuture(0, "no remoteclient", ERR_NO_HOSTS, nil)
+				if nil != rclient && rclient.IsClosed() {
+					futures[host] = NewErrFuture(0, "no remoteclient", ERR_NO_HOSTS, rclient.ctx)
+				} else {
+					futures[host] = NewErrFuture(0, "no remoteclient", ERR_NO_HOSTS, cancelledCtx)
+				}
 			}
 		}
 	}
@@ -127,7 +141,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 	for _, g := range event.GroupIds {
 		_, ok := futures[g]
 		if !ok {
-			futures[g] = NewErrFuture(0, g, ERR_NO_HOSTS, nil)
+			futures[g] = NewErrFuture(0, g, ERR_NO_HOSTS, cancelledCtx)
 		}
 	}
 
