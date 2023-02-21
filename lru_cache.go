@@ -80,10 +80,10 @@ func (self *LRUCache) Put(key, v interface{}, ttl time.Duration) chan time.Time 
 					self.tw.CancelTimer(exist.Timerid)
 				}
 			}
-			timerid, ch := self.tw.AddTimer(ttl, func(t time.Time) {
+			timerid, ch := self.tw.AddTimer(ttl, func(tid uint32, t time.Time) {
 				//直接移除就可以，cache淘汰会调用OnEvicted
 				self.cache.Remove(key)
-			}, func(t time.Time) {
+			}, func(tid uint32, t time.Time) {
 
 			})
 			entry.Timerid = timerid

@@ -4,14 +4,14 @@ import "testing"
 import "time"
 import "fmt"
 
-var tw *TimerWheel = NewTimerWheel(200*time.Millisecond, 1000)
+var tw *TimerWheel = NewTimerWheel(200 * time.Millisecond)
 
 func TestHeap(t *testing.T) {
-	tw.RepeatedTimer(10*time.Second, func(now time.Time) {
+	tw.RepeatedTimer(10*time.Second, func(tid uint32, now time.Time) {
 		fmt.Printf("T1:%d\n", now.Unix())
 	}, nil)
 
-	tw.RepeatedTimer(10*time.Second, func(now time.Time) {
+	tw.RepeatedTimer(10*time.Second, func(tid uint32, now time.Time) {
 		fmt.Printf("T2:%d\n", now.Unix())
 	}, nil)
 
@@ -20,7 +20,7 @@ func TestHeap(t *testing.T) {
 
 func TestRepeated(t *testing.T) {
 	ch := make(chan time.Time, 10)
-	tw.RepeatedTimer(10*time.Second, func(now time.Time) {
+	tw.RepeatedTimer(10*time.Second, func(tid uint32, now time.Time) {
 		ch <- now
 		time.Sleep(50 * time.Second)
 	}, nil)
@@ -96,9 +96,9 @@ func TestTimeWheel(t *testing.T) {
 	//add timer
 	//update timeout
 
-	id, ch = tw.AddTimer(5*time.Second, func(now time.Time) {
+	id, ch = tw.AddTimer(5*time.Second, func(tid uint32, now time.Time) {
 		t.Logf("Timeout %v\n", now)
-	}, func(t time.Time) {
+	}, func(tid uint32, t time.Time) {
 
 	})
 

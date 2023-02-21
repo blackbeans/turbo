@@ -12,7 +12,7 @@ var flow *RemotingFlow
 var clientf *RemotingFlow
 
 func init() {
-	gpool := NewLimitPool(context.Background(), NewTimerWheel(100, 1), 100)
+	gpool := NewLimitPool(context.Background(), 100)
 	flow = NewRemotingFlow("turbo-server:localhost:28888", gpool)
 	clientf = NewRemotingFlow("turbo-client:localhost:28888", gpool)
 }
@@ -40,7 +40,6 @@ func TestLineBaseServer(t *testing.T) {
 	})
 	server.ListenAndServer()
 
-
 	conn, _ := dial("localhost:28889")
 
 	// //重连管理器
@@ -57,8 +56,8 @@ func TestLineBaseServer(t *testing.T) {
 		16*1024, 10000, 10000,
 		10*time.Second,
 		50*10000)
-	ctx,_  := context.WithCancel(context.Background())
-	remoteClient := NewTClient(ctx,conn, func() ICodec {
+	ctx, _ := context.WithCancel(context.Background())
+	remoteClient := NewTClient(ctx, conn, func() ICodec {
 		return LengthBytesCodec{MaxFrameLength: MAX_PACKET_BYTES}
 	},
 		func(ctx *TContext) error {
@@ -123,9 +122,9 @@ func BenchmarkRemoteClient(t *testing.B) {
 		})
 
 	clientManager := NewClientManager(reconnManager)
-	ctx,_  := context.WithCancel(context.Background())
+	ctx, _ := context.WithCancel(context.Background())
 	conn, _ := dial("localhost:28888")
-	remoteClient := NewTClient(ctx,conn,
+	remoteClient := NewTClient(ctx, conn,
 		func() ICodec {
 			return LengthBytesCodec{
 				MaxFrameLength: MAX_PACKET_BYTES}

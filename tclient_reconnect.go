@@ -61,7 +61,7 @@ func NewReconnectManager(allowReconnect bool,
 
 	manager := &ReconnectManager{
 		timers:            make(map[string]uint32, 20),
-		tw:                NewTimerWheel(1*time.Second, 10),
+		tw:                NewTimerWheel(1 * time.Second),
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,
 		maxReconnectTimes: maxReconnectTimes, handshake: handshake}
@@ -92,7 +92,7 @@ func (self *ReconnectManager) submit0(task *reconnectTask) {
 	//创建定时的timer
 	timerid, _ := self.tw.AddTimer(
 		task.nextTimeout,
-		func(t time.Time) {
+		func(tid uint32, t time.Time) {
 			succ, err := task.reconnect(self.handshake)
 			if nil != err || !succ {
 				log.Info("ReconnectManager|RECONNECT|FAIL|%v|%s|%d", err, addr, task.retryCount)

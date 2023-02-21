@@ -100,7 +100,7 @@ func NewTConfig(name string,
 	idletime time.Duration,
 	maxOpaque int) *TConfig {
 
-	tw := NewTimerWheel(100*time.Millisecond, 50)
+	tw := NewTimerWheel(100 * time.Millisecond)
 	ctx, cancel := context.WithCancel(context.Background())
 	rh := &ReqHolder{
 		opaque:   0,

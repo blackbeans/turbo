@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
+	"github.com/blackbeans/turbo"
 	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"time"
-
-	"github.com/blackbeans/turbo"
 )
 
 func onMessage(ctx *turbo.TContext) error {
