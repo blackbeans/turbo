@@ -115,5 +115,6 @@ func (self *TServer) serve(l *StoppedListener) error {
 func (self *TServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
+	self.cancel()
 	log.Info("TServer|Shutdown...")
 }
