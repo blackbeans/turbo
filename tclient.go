@@ -201,7 +201,9 @@ func (self *TClient) WriteAndGet(p Packet,
 	select {
 	case self.wchan <- pp:
 	default:
-		return nil, errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+		err := errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+		pp.OnComplete(err)
+		future.Error(err)
 	}
 	resp, err := future.Get(tchan)
 	return resp, err
@@ -234,7 +236,9 @@ func (self *TClient) GroupWriteAndGet(timeout time.Duration, packets ...Packet) 
 		select {
 		case self.wchan <- pp:
 		default:
-			future.Error(errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr)))
+			err := errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+			pp.OnComplete(err)
+			future.Error(err)
 		}
 		futures = append(futures, future)
 	}
@@ -262,7 +266,9 @@ func (self *TClient) Write(p Packet) error {
 	case self.wchan <- &p:
 		return nil
 	default:
-		return errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+		err := errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+		p.OnComplete(err)
+		return err
 	}
 }
 
