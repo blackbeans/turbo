@@ -7,7 +7,7 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 //利用原生channel做pool的管理
@@ -128,7 +128,7 @@ func (self *GPool) queue(wu *WorkUnit) error {
 			defer func() {
 				<-self.limiter
 				if err := recover(); nil != err {
-					log4go.ErrorLog("handler", "GPool|Queue|Panic|%v|%s", err, string(debug.Stack()))
+					log.Errorf("GPool|Queue|Panic|%v|%s", err, string(debug.Stack()))
 					wu.Error(fmt.Errorf("%v", err))
 				}
 			}()

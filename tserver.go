@@ -2,7 +2,7 @@ package turbo
 
 import (
 	"context"
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"runtime"
 	"time"
@@ -63,13 +63,13 @@ func (self *TServer) ListenAndServer() error {
 
 	addr, err := net.ResolveTCPAddr("tcp4", self.hostport)
 	if nil != err {
-		log.Error("TServer|ADDR|FAIL|%s\n", self.hostport)
+		log.Errorf("TServer|ADDR|FAIL|%s", self.hostport)
 		return err
 	}
 
 	listener, err := net.ListenTCP("tcp4", addr)
 	if nil != err {
-		log.Error("TServer|ListenTCP|FAIL|%v|%s", err, addr)
+		log.Errorf("TServer|ListenTCP|FAIL|%v|%s", err, addr)
 		return err
 	}
 
@@ -101,7 +101,7 @@ func (self *TServer) serve(l *StoppedListener) error {
 	for !self.isShutdown {
 		conn, err := l.Accept()
 		if nil != err {
-			log.Error("TServer|serve|AcceptTCP|FAIL|%s\n", err)
+			log.Errorf("TServer|serve|AcceptTCP|FAIL|%s", err)
 			continue
 		} else {
 			//创建remotingClient对象
@@ -116,5 +116,5 @@ func (self *TServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
 	self.cancel()
-	log.Info("TServer|Shutdown...")
+	log.Infof("TServer|Shutdown...")
 }

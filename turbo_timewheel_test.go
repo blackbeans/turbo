@@ -20,14 +20,20 @@ func TestHeap(t *testing.T) {
 
 func TestRepeated(t *testing.T) {
 	ch := make(chan time.Time, 10)
-	tw.RepeatedTimer(10*time.Second, func(tid uint32, now time.Time) {
+	tid := tw.RepeatedTimer(10*time.Second, func(tid uint32, now time.Time) {
 		ch <- now
 		time.Sleep(50 * time.Second)
 	}, nil)
 
+	c := 0
 	for {
 		now := <-ch
 		fmt.Printf("timeout :%d\n", now.Unix())
+		c++
+		if c >= 2 {
+			tw.CancelTimer(tid)
+			break
+		}
 	}
 
 }

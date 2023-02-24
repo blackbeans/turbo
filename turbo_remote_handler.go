@@ -2,9 +2,8 @@ package turbo
 
 import (
 	"context"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
-
-	log "github.com/blackbeans/log4go"
 )
 
 //没有链接的分组直接失败
@@ -52,7 +51,7 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	// log.Printf("RemotingHandler|Process|%s|%t\n", self.GetName(), revent)
 	var futures map[string]*Future
 	if len(revent.errFutures) <= 0 && len(revent.GroupIds) <= 0 && len(revent.TargetHost) <= 0 {
-		log.Warn("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%s|%s\n", self.GetName(), revent)
+		log.Warnf("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%v", self.GetName(), revent)
 		futures = EMPTY_FUTURE
 	} else {
 		//发送数据
@@ -131,7 +130,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 	//增加错误的future
 	if nil != event.errFutures {
 		for k, v := range event.errFutures {
-			// log.InfoLog("kite_handler", "%v----------%v---------------%v", k, v)
+			// log.Infof("kite_handler", "%v----------%v---------------%v", k, v)
 			futures[k] = v
 
 		}

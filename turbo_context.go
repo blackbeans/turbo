@@ -2,7 +2,7 @@ package turbo
 
 import (
 	"container/list"
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 /**
@@ -75,7 +75,7 @@ func (self *DefaultPipeline) RegisteHandler(name string, handler IHandler) {
 	ctx.pipeline = self
 	currctx := self.eventHandler.PushBack(ctx)
 	self.hashEventHandler[name] = currctx
-	log.Info("DefaultPipeline|RegisteHandler|%s\n", name)
+	log.Infof("DefaultPipeline|RegisteHandler|%s\n", name)
 }
 
 //pipeline中处理向后的事件
@@ -94,12 +94,12 @@ func (self *DefaultPipeline) handleForward(ctx *DefaultPipelineContext, event IF
 //pipeline的尽头处理
 func (self *DefaultPipeline) eventSunk(event IEvent) {
 
-	// log.Info("DefaultPipeline|eventSunk|event:%t\n", event)
+	// log.Infof("DefaultPipeline|eventSunk|event:%t\n", event)
 }
 
 //pipeline处理中间出现错误
 func (self *DefaultPipeline) errorCaught(event IEvent, err error) error {
-	log.Info("DefaultPipeline|errorCaught|err:%s\n", err)
+	log.Infof("DefaultPipeline|errorCaught|err:%s\n", err)
 	return err
 }
 

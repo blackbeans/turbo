@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 //turbo session
@@ -69,7 +69,7 @@ func (self *TSession) Open() {
 			err := func() error {
 				defer func() {
 					if err := recover(); nil != err {
-						log.ErrorLog("stderr", "TSession|Read|%s|recover|FAIL|%s", self.remoteAddr, err)
+						log.Errorf("TSession|Read|%s|recover|FAIL|%s", self.remoteAddr, err)
 					}
 				}()
 
@@ -83,14 +83,14 @@ func (self *TSession) Open() {
 				br := bytes.NewReader(buff)
 				head, err := UnmarshalHeader(br)
 				if nil != err {
-					log.ErrorLog("stderr", "TSession|UnmarshalHeader|%s|FAIL|CLOSE SESSION|%v",
+					log.Errorf("TSession|UnmarshalHeader|%s|FAIL|CLOSE SESSION|%v",
 						self.remoteAddr, err)
 					self.onMessage(Packet{Header: head, Data: nil}, err)
 					return err
 				}
 
 				if head.BodyLen > MAX_PACKET_BYTES {
-					log.ErrorLog("stderr", "TSession|UnmarshalHeader|%s|Too Large Packet|CLOSE SESSION|%v",
+					log.Errorf("TSession|UnmarshalHeader|%s|Too Large Packet|CLOSE SESSION|%v",
 						self.remoteAddr, head.BodyLen)
 					//构造一个error的响应包
 					self.onMessage(Packet{Header: head, Data: nil}, ERR_TOO_LARGE_PACKET)
@@ -100,7 +100,7 @@ func (self *TSession) Open() {
 				//读取body
 				body, err := self.read0(self.br, int(head.BodyLen))
 				if nil != err {
-					log.ErrorLog("stderr", "TSession|ReadBody|%s|FAIL|CLOSE SESSION|%v|bodyLen:%d",
+					log.Errorf("TSession|ReadBody|%s|FAIL|CLOSE SESSION|%v|bodyLen:%d",
 						self.remoteAddr, err, head.BodyLen)
 					//构造一个error的读取包
 					self.onMessage(Packet{Header: head, Data: nil}, err)
@@ -131,7 +131,7 @@ func (self *TSession) read0(br *bufio.Reader, len int) ([]byte, error) {
 	for {
 		l, err := br.Read(buff[idx:])
 		if nil != err {
-			log.ErrorLog("stderr", "TSession|Open|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
+			log.Errorf("TSession|Open|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
 			return nil, err
 		}
 		idx += l
@@ -151,7 +151,7 @@ func (self *TSession) Write(tlv ...*Packet) error {
 	for _, t := range tlv {
 		p := t.Marshal()
 		if nil == p || len(p) <= 0 {
-			log.ErrorLog("stderr", "TSession|asyncWrite|MarshalPayload|FAIL|EMPTY PACKET|%s|%v", t)
+			log.Errorf("TSession|asyncWrite|MarshalPayload|FAIL|EMPTY PACKET")
 			if nil != t.OnComplete {
 				t.OnComplete(ERR_MARSHAL_PACKET)
 			}
@@ -162,7 +162,7 @@ func (self *TSession) Write(tlv ...*Packet) error {
 		//如果大小超过了最大值那么久写入失败
 		if t.Header.BodyLen > MAX_PACKET_BYTES {
 			if nil != t.OnComplete {
-				log.ErrorLog("stderr", "TSession|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
+				log.Errorf("TSession|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%d/%d",
 					t.Header.BodyLen, MAX_PACKET_BYTES)
 				t.OnComplete(ERR_TOO_LARGE_PACKET)
 			}
@@ -183,7 +183,7 @@ func (self *TSession) Write(tlv ...*Packet) error {
 	for {
 		length, err := self.bw.Write(tmp)
 		if nil != err {
-			log.ErrorLog("stderr", "TSession|asyncWrite|conn|%s|FAIL|%s|%d/%d", self.remoteAddr, err, length, len(tmp))
+			log.Errorf("TSession|asyncWrite|conn|%s|FAIL|%s|%d/%d", self.remoteAddr, err, length, len(tmp))
 			return err
 		}
 
@@ -218,7 +218,7 @@ func (self *TSession) Close() error {
 		self.config.FlowStat.Connections.Incr(-1)
 		//清理掉这个Clients
 		self.config.FlowStat.Clients.Delete(self.remoteAddr)
-		log.InfoLog("stdout", "TSession|Close|%s...", self.remoteAddr)
+		log.Infof("TSession|Close|%s...", self.remoteAddr)
 	}
 
 	return nil

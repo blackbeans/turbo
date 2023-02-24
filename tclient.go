@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 //网络层的client
@@ -63,7 +63,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 
 	//如果有错误，那么需要回给客户端错误包
 	if nil != err {
-		log.ErrorLog("stderr", "TSession|onMessage|FAIL|%v", self.remoteAddr, err)
+		log.Errorf("TSession|onMessage|FAIL|%s|%v", self.remoteAddr, err)
 		ctx := &TContext{
 			Message: &msg,
 			Client:  self,
@@ -71,7 +71,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 		}
 		err = self.dis(ctx)
 		if nil != err {
-			log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
+			log.Errorf("TSession|onMessage|dis|FAIL|%s|%v", self.remoteAddr, err)
 		}
 	} else {
 		p := &msg
@@ -80,7 +80,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 			message, err := self.codec().UnmarshalPayload(p)
 			if nil != err {
 				// 构造一个error的响应包
-				log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
+				log.Errorf("TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
 					self.remoteAddr, err, msg.Header.BodyLen)
 				ctx := &TContext{
 					Message: p,
@@ -101,7 +101,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 			//处理一下包
 			err = self.dis(ctx)
 			if nil != err {
-				log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
+				log.Errorf("TSession|onMessage|dis|FAIL|%s|%v", self.remoteAddr, err)
 			}
 			return nil, err
 		})
@@ -123,7 +123,7 @@ func (self *TClient) Start() {
 	//启动异步写出
 	self.asyncWrite()
 
-	log.InfoLog("stdout", "TClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
+	log.Infof("TClient|Start|SUCC|local:%s|remote:%s", self.LocalAddr(), self.RemoteAddr())
 }
 
 //同步发起ping的命令
@@ -134,7 +134,7 @@ func (self *TClient) Ping(heartbeat *Packet, timeout time.Duration) error {
 	}
 	version, ok := pong.(int64)
 	if !ok {
-		log.Warn("TClient|Ping|Pong|ERROR TYPE |%s\n", pong)
+		log.Warnf("TClient|Ping|Pong|ERROR TYPE |%s", pong)
 		return ERR_PONG
 	}
 	self.updateHeartBeat(version)
@@ -167,7 +167,7 @@ func (self *TClient) fillOpaque(p *Packet) uint32 {
 func (self *TClient) Attach(opaque uint32, obj interface{}) {
 	defer func() {
 		if err := recover(); nil != err {
-			log.ErrorLog("stderr", "TClient|Attach|FAIL|%s|%s", err, obj)
+			log.Errorf("TClient|Attach|FAIL|%s|%s", err, obj)
 		}
 	}()
 
@@ -186,7 +186,7 @@ func (self *TClient) WriteAndGet(p Packet,
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
 		if nil != err {
-			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(pp.Data))
+			log.Errorf("TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(pp.Data))
 			future.Error(err)
 			//生成一个错误的转发
 			ctx := &TContext{
@@ -222,7 +222,7 @@ func (self *TClient) GroupWriteAndGet(timeout time.Duration, packets ...Packet) 
 		//写入完成之后的操作
 		pp.OnComplete = func(err error) {
 			if nil != err {
-				log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(pp.Data))
+				log.Errorf("TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(pp.Data))
 				future.Error(err)
 				//生成一个错误的转发
 				ctx := &TContext{
@@ -251,7 +251,7 @@ func (self *TClient) Write(p Packet) error {
 	//写入完成之后的操作
 	p.OnComplete = func(err error) {
 		if nil != err {
-			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(p.Data))
+			log.Errorf("TClient|Write|OnComplete|ERROR|FAIL|%v|%s", err, string(p.Data))
 			//生成一个错误的转发
 			ctx := &TContext{
 				Client:  self,
@@ -287,14 +287,14 @@ func (self *TClient) asyncWrite() {
 					//这里坐下序列化，看下Body是否大于最大的包大小
 					raw, err := self.codec().MarshalPayload(p)
 					if nil != err {
-						log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|%v|%+v",
+						log.Errorf("TClient|asyncWrite|MarshalPayload|FAIL|%v|%+v",
 							err, p.PayLoad)
 						if nil != p.OnComplete {
 							p.OnComplete(err)
 						}
 						continue
 					} else if len(raw) > MAX_PACKET_BYTES {
-						log.ErrorLog("stderr", "TClient|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d",
+						log.Errorf("TClient|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%d|%d",
 							len(raw), MAX_PACKET_BYTES)
 						if nil != p.OnComplete {
 							p.OnComplete(ERR_TOO_LARGE_PACKET)
@@ -310,7 +310,7 @@ func (self *TClient) asyncWrite() {
 					err = self.s.Write(p)
 					//链接是关闭的
 					if nil != err {
-						log.ErrorLog("stderr", "TClient|asyncWrite|Write|FAIL|%v",
+						log.Errorf("TClient|asyncWrite|Write|FAIL|%v",
 							err)
 						self.s.Close()
 						continue
@@ -330,5 +330,5 @@ func (self *TClient) IsClosed() bool {
 func (self *TClient) Shutdown() {
 	self.closeFunc()
 	self.s.Close()
-	log.Info("TClient|Shutdown|%s...", self.RemoteAddr())
+	log.Infof("TClient|Shutdown|%s...", self.RemoteAddr())
 }

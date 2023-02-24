@@ -56,7 +56,7 @@ func main() {
 		}
 		conn, err := net.DialTCP("tcp4", nil, remoteAddr)
 		if nil != err {
-			log.Printf("KiteClientManager|RECONNECT|%s|FAIL|%s\n", hostport, err)
+			log.Printf("KiteClientManager|RECONNECT|%s|FAIL|%s", hostport, err)
 			return nil, err
 		}
 

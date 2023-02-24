@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 //-------------重连任务
@@ -34,7 +34,7 @@ func (self *reconnectTask) reconnect(handshake func(ga *GroupAuth, remoteClient 
 	tcpAddr, _ := net.ResolveTCPAddr("tcp4", self.remoteClient.RemoteAddr())
 	conn, err := net.DialTCP("tcp4", nil, tcpAddr)
 	if nil != err {
-		log.ErrorLog("stderr", "TClient|RECONNECT|%s|FAIL|%s\n", self.remoteClient.RemoteAddr(), err)
+		log.Errorf("TClient|RECONNECT|%s|FAIL|%s", self.remoteClient.RemoteAddr(), err)
 		return false, err
 	}
 	//重新设置conn
@@ -65,7 +65,7 @@ func NewReconnectManager(allowReconnect bool,
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,
 		maxReconnectTimes: maxReconnectTimes, handshake: handshake}
-	log.Info("ReconnectManager|Start...")
+	log.Infof("ReconnectManager|Start...")
 	return manager
 }
 
@@ -95,13 +95,13 @@ func (self *ReconnectManager) submit0(task *reconnectTask) {
 		func(tid uint32, t time.Time) {
 			succ, err := task.reconnect(self.handshake)
 			if nil != err || !succ {
-				log.Info("ReconnectManager|RECONNECT|FAIL|%v|%s|%d", err, addr, task.retryCount)
+				log.Infof("ReconnectManager|RECONNECT|FAIL|%v|%s|%d", err, addr, task.retryCount)
 				retry := func() bool {
 					self.lock.Lock()
 					defer self.lock.Unlock()
 					//如果当前重试次数大于最大重试次数则放弃
 					if task.retryCount > self.maxReconnectTimes {
-						log.Info("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d", addr, task.retryCount)
+						log.Infof("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d", addr, task.retryCount)
 						_, ok := self.timers[addr]
 						if ok {
 							delete(self.timers, addr)
@@ -127,7 +127,7 @@ func (self *ReconnectManager) submit0(task *reconnectTask) {
 				if ok {
 					delete(self.timers, addr)
 				}
-				log.Info("ReconnectManager|RECONNECT|SUCC|%s|addr:%s|retryCount:%d", task.remoteClient.RemoteAddr(), addr, task.retryCount)
+				log.Infof("ReconnectManager|RECONNECT|SUCC|%s|addr:%s|retryCount:%d", task.remoteClient.RemoteAddr(), addr, task.retryCount)
 			}
 
 		}, nil)
@@ -154,5 +154,5 @@ func (self *ReconnectManager) stop() {
 	for _, tid := range self.timers {
 		self.tw.CancelTimer(tid)
 	}
-	log.Info("ReconnectManager|stop...")
+	log.Infof("ReconnectManager|stop...")
 }

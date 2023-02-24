@@ -11,8 +11,7 @@ import (
 //测试gpool队列
 func TestGPool_Queue(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	tw := NewTimerWheel(100*time.Millisecond, 10)
-	gpool := NewLimitPool(ctx, tw, 100)
+	gpool := NewLimitPool(ctx, 100)
 	go func() {
 		for {
 			select {
@@ -27,10 +26,10 @@ func TestGPool_Queue(t *testing.T) {
 		}
 	}()
 
-	wu, err := gpool.Queue(func(ctx context.Context) (i interface{}, e error) {
+	wu, err := gpool.Queue(context.Background(), func(ctx context.Context) (i interface{}, e error) {
 		time.Sleep(5 * time.Second)
 		return "a", nil
-	}, 0)
+	})
 
 	if nil != err {
 		fmt.Printf("Queue:%v\n", err)
@@ -61,8 +60,7 @@ func TestGPool_Queue(t *testing.T) {
 //测试下batch
 func TestNewBatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	tw := NewTimerWheel(100*time.Millisecond, 10)
-	gpool := NewLimitPool(ctx, tw, 100)
+	gpool := NewLimitPool(ctx, 100)
 	go func() {
 		for {
 			select {
@@ -77,6 +75,8 @@ func TestNewBatch(t *testing.T) {
 		}
 	}()
 
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	batch := gpool.NewBatch()
 	wus, err := batch.Queue(func(ctx context.Context) (interface{}, error) {
 		time.Sleep(5 * time.Second)
@@ -88,7 +88,7 @@ func TestNewBatch(t *testing.T) {
 		}).Queue(func(ctx context.Context) (interface{}, error) {
 		time.Sleep(5 * time.Second)
 		return "c", nil
-	}).Wait(2 * time.Second)
+	}).Wait(ctx)
 
 	if nil != err {
 		t.Error(err)
@@ -104,7 +104,8 @@ func TestNewBatch(t *testing.T) {
 		}
 	}
 	fmt.Println("FINISH...")
-
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	wus, err = batch.Queue(func(ctx context.Context) (interface{}, error) {
 		time.Sleep(5 * time.Second)
 		return "a", nil
@@ -115,7 +116,7 @@ func TestNewBatch(t *testing.T) {
 		}).Queue(func(ctx context.Context) (interface{}, error) {
 		time.Sleep(5 * time.Second)
 		return "c", nil
-	}).Wait(10 * time.Second)
+	}).Wait(ctx)
 
 	if nil != err {
 		t.Error(err)
@@ -137,8 +138,7 @@ func TestNewBatch(t *testing.T) {
 
 func TestGPool_Cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	tw := NewTimerWheel(100*time.Millisecond, 10)
-	gpool := NewLimitPool(ctx, tw, 100)
+	gpool := NewLimitPool(ctx, 100)
 	go func() {
 		for {
 			select {
@@ -154,7 +154,8 @@ func TestGPool_Cancel(t *testing.T) {
 	}()
 
 	batch := gpool.NewBatch()
-
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	now := time.Now()
 	wus, err := batch.Queue(func(ctx context.Context) (interface{}, error) {
 		return "a", nil
@@ -165,7 +166,7 @@ func TestGPool_Cancel(t *testing.T) {
 		}).Queue(func(ctx context.Context) (interface{}, error) {
 		time.Sleep(5 * time.Second)
 		return "c", nil
-	}).Wait(2 * time.Second)
+	}).Wait(ctx)
 
 	if nil != err {
 		t.Error(err)
@@ -183,7 +184,7 @@ func TestGPool_Cancel(t *testing.T) {
 	for _, wu := range wus {
 		resp, err := wu.Get()
 		fmt.Printf("%v|%v\n", err, resp)
-		if err != nil && err != ERR_QUEUE_CANCEL {
+		if err != nil && err != ERR_QUEUE_CONTEXT_DONE {
 			fmt.Printf("Should Not Timeout %v|%v\n", err, resp)
 			t.FailNow()
 		}

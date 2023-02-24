@@ -1,7 +1,7 @@
 package turbo
 
 import (
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"sort"
 	"sync"
@@ -39,7 +39,7 @@ func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
 }
 
 func (self *ClientManager) evict() {
-	log.Info("ClientManager|evict...")
+	log.Infof("ClientManager|evict...")
 	tick := time.NewTicker(1 * time.Minute)
 	for {
 		clients := self.ClientsClone()
@@ -144,7 +144,7 @@ func (self *ClientManager) removeClient(hostport string) {
 		if ok && len(gc) <= 0 {
 			//移除group2Clients
 			delete(self.groupClients, ga.GroupId)
-			log.InfoLog("stdout", "ClientManager|removeClient|EmptyGroup|%s...", ga.GroupId)
+			log.Infof("ClientManager|removeClient|EmptyGroup|%s...", ga.GroupId)
 		}
 	}
 
@@ -154,7 +154,7 @@ func (self *ClientManager) removeClient(hostport string) {
 		c.Shutdown()
 		delete(self.allClients, hostport)
 	}
-	log.InfoLog("stdout", "ClientManager|removeClient|%s...%d", hostport, len(self.allClients))
+	log.Infof("ClientManager|removeClient|%s...%d", hostport, len(self.allClients))
 }
 
 func (self *ClientManager) SubmitReconnect(c *TClient) {
@@ -251,5 +251,5 @@ func (self *ClientManager) Shutdown() {
 	for _, c := range self.allClients {
 		c.Shutdown()
 	}
-	log.Info("ClientManager|Shutdown....")
+	log.Infof("ClientManager|Shutdown....")
 }
