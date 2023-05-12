@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"net"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 //turbo session

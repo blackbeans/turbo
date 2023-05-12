@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
 )
 
 //利用原生channel做pool的管理

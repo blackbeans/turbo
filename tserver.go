@@ -2,11 +2,14 @@ package turbo
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
+	"github.com/blackbeans/logx"
 	"net"
 	"runtime"
 	"time"
 )
+
+//turbo日志
+var log = logx.GetLogger("turbo")
 
 type TServer struct {
 	ctx        context.Context

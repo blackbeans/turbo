@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 //网络层的client

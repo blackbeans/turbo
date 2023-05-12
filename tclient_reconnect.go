@@ -5,8 +5,6 @@ import (
 	"net"
 	"sync"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 //-------------重连任务

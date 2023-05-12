@@ -2,7 +2,6 @@ package turbo
 
 import (
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"time"
 )
 

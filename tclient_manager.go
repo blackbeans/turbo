@@ -1,7 +1,6 @@
 package turbo
 
 import (
-	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"sort"
 	"sync"

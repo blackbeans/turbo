@@ -2,7 +2,6 @@ package turbo
 
 import (
 	"container/list"
-	log "github.com/sirupsen/logrus"
 )
 
 /**
