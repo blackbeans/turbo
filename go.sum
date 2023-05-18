@@ -2,6 +2,8 @@ github.com/blackbeans/logx v0.0.0-20230511130048-df4c16f12206 h1:WNrnCmgd/q3/4Rf
 github.com/blackbeans/logx v0.0.0-20230511130048-df4c16f12206/go.mod h1:etQRdBUB7nfCUB8XWuZeOTWvDl8Q838qAi/LBARGQwg=
 github.com/blackbeans/logx v0.0.0-20230512024628-435379234c0f h1:VJmelIcAXmEb0Jv4N7IWayTLIA2xV05V1bCtBgceg7E=
 github.com/blackbeans/logx v0.0.0-20230512024628-435379234c0f/go.mod h1:etQRdBUB7nfCUB8XWuZeOTWvDl8Q838qAi/LBARGQwg=
+github.com/blackbeans/logx v0.0.0-20230518044926-b1a03ee70678 h1:qxOxh4kj6+1zJxDQDPZdnTBosBu/5GVwHw6mNxXpYsU=
+github.com/blackbeans/logx v0.0.0-20230518044926-b1a03ee70678/go.mod h1:etQRdBUB7nfCUB8XWuZeOTWvDl8Q838qAi/LBARGQwg=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
